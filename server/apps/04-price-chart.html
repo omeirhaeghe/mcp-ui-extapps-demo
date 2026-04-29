@@ -56,18 +56,8 @@
     </div>
   </div>
 
-<script>
-  let nextId = 1;
-  const pending = new Map();
-  function send(m) { parent.postMessage(m, "*"); }
-  function notify(method, params) { send({ jsonrpc: "2.0", method, params }); }
-  function request(method, params) {
-    const id = nextId++;
-    return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      send({ jsonrpc: "2.0", id, method, params });
-    });
-  }
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
   const SYM_TO_ID = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana',
                       DOGE: 'dogecoin', ADA: 'cardano' };
@@ -75,50 +65,14 @@
   let id = 'bitcoin';
   let chart = null;
   let days = 1;
-  let firstLoadDone = false;
-
-  window.addEventListener("message", (e) => {
-    const m = e.data;
-    if (!m || m.jsonrpc !== "2.0") return;
-    if ("result" in m || "error" in m) {
-      const p = pending.get(m.id);
-      if (p) { pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); }
-      return;
-    }
-    if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") {
-      const args = (m.params && m.params.arguments) || {};
-      if (args.symbol) {
-        symbol = String(args.symbol).toUpperCase();
-        id = SYM_TO_ID[symbol] || 'bitcoin';
-        document.getElementById('symbol').textContent = symbol;
-        load();
-      }
-    }
-  });
-  request("ui/initialize", {
-    protocolVersion: "2025-06-18",
-    clientInfo: { name: "price-chart-widget", version: "1.0.0" },
-    appCapabilities: {},
-  }).then(() => {
-    notify("ui/notifications/initialized", {});
-    if (!firstLoadDone) load();
-  });
 
   function fmtUsd(n) {
     if (n == null) return '—';
     return '$' + n.toLocaleString(undefined, {maximumFractionDigits: n < 1 ? 4 : 2});
   }
-  function fmtPct(p) {
-    const sign = p >= 0 ? '+' : '';
-    return sign + p.toFixed(2) + '%';
-  }
-  function syncHeight() {
-    notify("ui/notifications/size-changed",
-           { width: document.body.scrollWidth, height: document.body.scrollHeight + 8 });
-  }
+  function fmtPct(p) { return (p >= 0 ? '+' : '') + p.toFixed(2) + '%'; }
 
   async function load() {
-    firstLoadDone = true;
     const wrap = document.getElementById('chart-wrap');
     wrap.innerHTML = '<div class="skeleton"></div>';
     try {
@@ -168,10 +122,8 @@
           maintainAspectRatio: false,
         },
       });
-      syncHeight();
     } catch (e) {
       wrap.innerHTML = '<div class="err">Could not load price data: ' + e.message + '</div>';
-      syncHeight();
     }
   }
 
@@ -182,10 +134,24 @@
     load();
   }));
 
-  document.getElementById('source').addEventListener('click', (e) => {
+  const app = new App({ name: "price-chart-widget", version: "1.0.0" });
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (args.symbol) {
+      symbol = String(args.symbol).toUpperCase();
+      id = SYM_TO_ID[symbol] || 'bitcoin';
+      document.getElementById('symbol').textContent = symbol;
+      load();
+    }
+  };
+
+  document.getElementById('source').addEventListener('click', async (e) => {
     e.preventDefault();
-    request("ui/open-link", { url: 'https://www.coingecko.com/en/coins/' + id });
+    try { await app.openLink({ url: 'https://www.coingecko.com/en/coins/' + id }); }
+    catch (err) { console.error(err); }
   });
+
+  app.connect().then(() => load());
 </script>
 </body>
 </html>

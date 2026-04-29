@@ -46,7 +46,7 @@
 <body>
   <div class="card" id="card">
     <h1>Quick feedback</h1>
-    <p class="sub">Tests <code>tools/call</code> + <code>ui/message</code>.</p>
+    <p class="sub">Tests <code>callServerTool</code> + <code>sendMessage</code>.</p>
     <div class="prompt" id="prompt">How was the response?</div>
     <form id="form">
       <label>Rating</label>
@@ -68,36 +68,8 @@
     <div class="log" id="log">log: ready</div>
   </div>
 
-<script>
-  let nextId = 1;
-  const pending = new Map();
-  function send(m) { parent.postMessage(m, "*"); }
-  function notify(method, params) { send({ jsonrpc: "2.0", method, params }); }
-  function request(method, params) {
-    const id = nextId++;
-    return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      send({ jsonrpc: "2.0", id, method, params });
-    });
-  }
-  window.addEventListener("message", (e) => {
-    const m = e.data;
-    if (!m || m.jsonrpc !== "2.0") return;
-    if ("result" in m || "error" in m) {
-      const p = pending.get(m.id);
-      if (p) { pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); }
-      return;
-    }
-    if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") {
-      const args = (m.params && m.params.arguments) || {};
-      if (args.prompt) document.getElementById("prompt").textContent = args.prompt;
-    }
-  });
-  request("ui/initialize", {
-    protocolVersion: "2025-06-18",
-    clientInfo: { name: "feedback-widget", version: "1.0.0" },
-    appCapabilities: {},
-  }).then(() => notify("ui/notifications/initialized", {}));
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
   const log = document.getElementById('log');
   const submit = document.getElementById('submit');
@@ -111,30 +83,39 @@
     log.textContent = 'log: rating=' + rating;
   }));
 
-  document.getElementById('send-prompt').addEventListener('click', () => {
-    request("ui/message", {
-      role: "user",
-      content: { type: "text", text: "Can you summarize the key points so far?" },
-    }).then(() => { log.textContent = 'log: ui/message sent'; })
-      .catch((err) => { log.textContent = 'log: ui/message error: ' + (err.message || err.code); });
+  const app = new App({ name: "feedback-widget", version: "1.0.0" });
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (args.prompt) document.getElementById("prompt").textContent = args.prompt;
+  };
+  app.onerror = (e) => { log.textContent = 'log: error: ' + (e?.message || e); };
+
+  document.getElementById('send-prompt').addEventListener('click', async () => {
+    try {
+      await app.sendMessage({
+        role: "user",
+        content: [{ type: "text", text: "Can you summarize the key points so far?" }],
+      });
+      log.textContent = 'log: sendMessage ok';
+    } catch (e) {
+      log.textContent = 'log: sendMessage error: ' + (e?.message || e);
+    }
   });
 
-  document.getElementById('form').addEventListener('submit', (e) => {
+  document.getElementById('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = document.getElementById('text').value;
-    request("tools/call", { name: "submit_feedback", arguments: { rating, text } })
-      .then(() => { log.textContent = 'log: submit_feedback ok'; })
-      .catch((err) => { log.textContent = 'log: submit_feedback error: ' + (err.message || err.code); });
     document.getElementById('form').style.display = 'none';
     document.getElementById('done').classList.add('visible');
-    requestAnimationFrame(syncHeight);
+    try {
+      await app.callServerTool({ name: "submit_feedback", arguments: { rating, text } });
+      log.textContent = 'log: submit_feedback ok';
+    } catch (e) {
+      log.textContent = 'log: submit_feedback error: ' + (e?.message || e);
+    }
   });
 
-  function syncHeight() {
-    notify("ui/notifications/size-changed",
-           { width: document.body.scrollWidth, height: document.body.scrollHeight + 8 });
-  }
-  requestAnimationFrame(syncHeight);
+  app.connect();
 </script>
 </body>
 </html>

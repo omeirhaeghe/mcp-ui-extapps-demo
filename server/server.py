@@ -35,10 +35,13 @@ def _load_app(name: str) -> str:
 # 1. Hello — static text/html, no JS beyond protocol shim.
 # ---------------------------------------------------------------------------
 
+_SDK_CSP = {"resourceDomains": ["https://cdn.jsdelivr.net"]}
+
+
 @mcp.resource(
     "ui://hello",
     mime_type="text/html;profile=mcp-app",
-    meta={"ui": {"prefersBorder": True}},
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
 )
 def hello_app() -> str:
     return _load_app("01-hello.html")
@@ -57,7 +60,7 @@ async def show_hello(name: str = "world") -> str:
 @mcp.resource(
     "ui://counter",
     mime_type="text/html;profile=mcp-app",
-    meta={"ui": {"prefersBorder": True}},
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
 )
 def counter_app() -> str:
     return _load_app("02-counter.html")
@@ -76,7 +79,7 @@ async def show_counter(start: int = 0) -> str:
 @mcp.resource(
     "ui://feedback",
     mime_type="text/html;profile=mcp-app",
-    meta={"ui": {"prefersBorder": True}},
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
 )
 def feedback_app() -> str:
     return _load_app("03-feedback.html")
@@ -115,6 +118,7 @@ async def submit_feedback(rating: int, text: str = "") -> str:
     },
 )
 def price_chart_app() -> str:
+    # cdn.jsdelivr.net already covers both Chart.js and the SDK bundle.
     return _load_app("04-price-chart.html")
 
 
@@ -136,6 +140,7 @@ async def show_price_chart(symbol: str = "BTC") -> str:
             "prefersBorder": True,
             "csp": {
                 "resourceDomains": [
+                    "https://cdn.jsdelivr.net",
                     "https://unpkg.com",
                     "https://tile.openstreetmap.org",
                 ],

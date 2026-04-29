@@ -35,7 +35,7 @@
 <body>
   <div class="card">
     <h1>Counter</h1>
-    <p>Tests JS execution and dynamic resize via <code>ui/notifications/size-changed</code>.</p>
+    <p>Tests JS execution and the SDK's auto-resize observer.</p>
     <div class="display" id="value">0</div>
     <div class="row">
       <button id="dec">−1</button>
@@ -44,48 +44,19 @@
       <button id="grow">Grow ↓</button>
     </div>
     <div class="grow" id="extra">
-      Extra content. Host should grow the iframe via the size-changed notification.
+      Extra content. The SDK's ResizeObserver should grow the iframe.
     </div>
     <div class="log" id="log">log: ready</div>
   </div>
 
-<script>
-  // SEP-1865 protocol shim.
-  let nextId = 1;
-  const pending = new Map();
-  function send(m) { parent.postMessage(m, "*"); }
-  function notify(method, params) { send({ jsonrpc: "2.0", method, params }); }
-  function request(method, params) {
-    const id = nextId++;
-    return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      send({ jsonrpc: "2.0", id, method, params });
-    });
-  }
-  let initialStart = 0;
-  window.addEventListener("message", (e) => {
-    const m = e.data;
-    if (!m || m.jsonrpc !== "2.0") return;
-    if ("result" in m || "error" in m) {
-      const p = pending.get(m.id);
-      if (p) { pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); }
-      return;
-    }
-    if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") {
-      const args = (m.params && m.params.arguments) || {};
-      if (typeof args.start === "number") set(args.start);
-    }
-  });
-  request("ui/initialize", {
-    protocolVersion: "2025-06-18",
-    clientInfo: { name: "counter-widget", version: "1.0.0" },
-    appCapabilities: {},
-  }).then(() => notify("ui/notifications/initialized", {}));
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
-  let value = 0;
   const display = document.getElementById('value');
   const log = document.getElementById('log');
   const extra = document.getElementById('extra');
+  let value = 0;
+  let initialStart = 0;
 
   function set(v) {
     value = v;
@@ -97,19 +68,20 @@
   document.getElementById('reset').addEventListener('click', () => {
     set(initialStart);
     extra.classList.remove('visible');
-    requestAnimationFrame(syncHeight);
   });
   document.getElementById('grow').addEventListener('click', () => {
     extra.classList.toggle('visible');
-    requestAnimationFrame(syncHeight);
   });
 
-  function syncHeight() {
-    const h = document.body.scrollHeight + 8;
-    notify("ui/notifications/size-changed", { width: document.body.scrollWidth, height: h });
-    log.textContent = 'log: size-changed(h=' + h + ')';
-  }
-  requestAnimationFrame(syncHeight);
+  const app = new App({ name: "counter-widget", version: "1.0.0" });
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (typeof args.start === "number") {
+      initialStart = args.start;
+      set(args.start);
+    }
+  };
+  app.connect();
 </script>
 </body>
 </html>
