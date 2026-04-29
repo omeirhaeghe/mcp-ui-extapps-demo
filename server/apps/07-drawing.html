@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Drawing — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:14px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    .sub { margin:0 0 12px; color:var(--muted); font-size:12px; }
+    canvas { width:100%; aspect-ratio: 4 / 3; background:#fff;
+      border:1px solid var(--border); border-radius:8px;
+      cursor: crosshair; touch-action: none; display:block; }
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      margin-top:10px; }
+    .swatches { display:flex; gap:6px; }
+    .swatch { width:22px; height:22px; border-radius:50%;
+      border:2px solid transparent; cursor:pointer; }
+    .swatch.on { border-color: var(--fg); }
+    input[type=range] { flex: 0 1 100px; }
+    input[type=text] { flex:1; min-width:120px; padding:6px 10px;
+      background:var(--bg); border:1px solid var(--border); border-radius:5px;
+      color:var(--fg); font-family: inherit; font-size:12px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:5px;
+      padding:6px 12px; font-size:12px; cursor:pointer; font-family: inherit; }
+    button.ghost { background: var(--bg); color: var(--fg);
+      border:1px solid var(--border); }
+    .status { color: var(--muted); font-size:11px; margin-top:8px;
+      min-height: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Drawing canvas</h1>
+    <p class="sub">Tests sending a large payload back to the server (the data URL).</p>
+    <canvas id="cv" width="600" height="450"></canvas>
+    <div class="toolbar">
+      <div class="swatches" id="swatches">
+        <div class="swatch on" data-c="#000000" style="background:#000"></div>
+        <div class="swatch" data-c="#dc2626" style="background:#dc2626"></div>
+        <div class="swatch" data-c="#f59e0b" style="background:#f59e0b"></div>
+        <div class="swatch" data-c="#16a34a" style="background:#16a34a"></div>
+        <div class="swatch" data-c="#2563eb" style="background:#2563eb"></div>
+        <div class="swatch" data-c="#7c3aed" style="background:#7c3aed"></div>
+      </div>
+      <input type="range" id="size" min="2" max="32" value="6" title="Brush size">
+      <input type="text" id="title" placeholder="Title (optional)" maxlength="60">
+      <button class="ghost" id="clear">Clear</button>
+      <button id="save">Save</button>
+    </div>
+    <div class="status" id="status">Ready.</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const status = document.getElementById('status');
+  let drawing = false;
+  let color = "#000000";
+
+  function clear() { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cv.width,cv.height); }
+  clear();
+
+  function pos(e) {
+    const r = cv.getBoundingClientRect();
+    const x = ((e.clientX ?? e.touches?.[0]?.clientX) - r.left) * cv.width / r.width;
+    const y = ((e.clientY ?? e.touches?.[0]?.clientY) - r.top) * cv.height / r.height;
+    return { x, y };
+  }
+  function start(e) {
+    e.preventDefault();
+    drawing = true;
+    const { x, y } = pos(e);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = parseInt(document.getElementById('size').value, 10);
+    ctx.beginPath(); ctx.moveTo(x, y);
+  }
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const { x, y } = pos(e);
+    ctx.lineTo(x, y); ctx.stroke();
+  }
+  function end() { drawing = false; }
+
+  cv.addEventListener('mousedown', start);
+  cv.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  cv.addEventListener('touchstart', start, { passive: false });
+  cv.addEventListener('touchmove', move,  { passive: false });
+  cv.addEventListener('touchend', end);
+
+  document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
+    document.querySelectorAll('.swatch').forEach(x => x.classList.remove('on'));
+    s.classList.add('on');
+    color = s.dataset.c;
+  }));
+
+  document.getElementById('clear').addEventListener('click', () => {
+    clear(); status.textContent = 'Cleared.';
+  });
+
+  const app = new App({ name: "drawing-widget", version: "1.0.0" });
+  document.getElementById('save').addEventListener('click', async () => {
+    const title = document.getElementById('title').value.trim() || 'Untitled';
+    const dataUrl = cv.toDataURL('image/png');
+    status.textContent = 'Saving…';
+    try {
+      await app.callServerTool({
+        name: "save_drawing",
+        arguments: { title, data_url: dataUrl },
+      });
+      status.textContent = 'Saved "' + title + '" (' + Math.round(dataUrl.length/1024) + ' KB).';
+    } catch (e) {
+      status.textContent = 'Save error: ' + (e?.message || e);
+    }
+  });
+  app.connect();
+</script>
+</body>
+</html>

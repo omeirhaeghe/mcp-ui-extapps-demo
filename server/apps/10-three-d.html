@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>3D viewer — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:0; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .header { padding:12px 14px; border-bottom: 1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .title { font-size:14px; font-weight:600; }
+    .ctrls { display:flex; gap:6px; }
+    .ctrl { background:var(--bg); border:1px solid var(--border); color:var(--fg);
+      padding:4px 10px; border-radius:5px; font-size:12px; cursor:pointer;
+      font-family: inherit; }
+    .ctrl.on { background: var(--accent); color:#fff; border-color: transparent; }
+    #stage { width:100%; height: 360px; display:block; }
+    .footer { padding: 8px 14px; color: var(--muted); font-size: 11px;
+      border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span class="title">3D viewer</span>
+      <div class="ctrls" id="ctrls">
+        <button class="ctrl" data-s="cube">Cube</button>
+        <button class="ctrl" data-s="sphere">Sphere</button>
+        <button class="ctrl on" data-s="torus">Torus</button>
+        <button class="ctrl" data-s="knot">Knot</button>
+      </div>
+    </div>
+    <canvas id="stage"></canvas>
+    <div class="footer">three.js via CDN · WebGL · drag to rotate.</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js";
+
+  const canvas = document.getElementById('stage');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 0, 4);
+
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const matColor = dark ? 0x7aa2ff : 0x2563eb;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.0);
+  dl.position.set(3, 4, 5);
+  scene.add(dl);
+
+  let mesh = null;
+  function setShape(name) {
+    if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); }
+    let geom;
+    switch (name) {
+      case 'cube':   geom = new THREE.BoxGeometry(1.4, 1.4, 1.4); break;
+      case 'sphere': geom = new THREE.SphereGeometry(1, 48, 32); break;
+      case 'knot':   geom = new THREE.TorusKnotGeometry(0.8, 0.28, 128, 24); break;
+      default:       geom = new THREE.TorusGeometry(1, 0.35, 24, 80);
+    }
+    const mat = new THREE.MeshStandardMaterial({ color: matColor, metalness: 0.2, roughness: 0.45 });
+    mesh = new THREE.Mesh(geom, mat);
+    scene.add(mesh);
+    document.querySelectorAll('.ctrl').forEach(b =>
+      b.classList.toggle('on', b.dataset.s === name));
+  }
+  setShape('torus');
+
+  let dragging = false, lastX = 0, lastY = 0;
+  let rotX = 0.4, rotY = 0;
+  canvas.addEventListener('mousedown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+  window.addEventListener('mouseup', () => dragging = false);
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    rotY += (e.clientX - lastX) * 0.005;
+    rotX += (e.clientY - lastY) * 0.005;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+
+  function size() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) {
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  function tick(t) {
+    size();
+    if (mesh) {
+      mesh.rotation.x = rotX + t * 0.0003;
+      mesh.rotation.y = rotY + t * 0.0005;
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  document.querySelectorAll('.ctrl').forEach(b =>
+    b.addEventListener('click', () => setShape(b.dataset.s)));
+
+  const app = new App({ name: "three-d-widget", version: "1.0.0" });
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (args.shape) setShape(String(args.shape));
+  };
+  app.connect();
+</script>
+</body>
+</html>

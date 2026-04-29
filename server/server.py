@@ -167,6 +167,201 @@ async def save_pin(lat: float, lng: float, label: str = "") -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# 6. Tic-tac-toe — server-side minimax AI, widget calls make_move.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://tictactoe",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def tictactoe_app() -> str:
+    return _load_app("06-tictactoe.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://tictactoe"}})
+async def show_tictactoe() -> str:
+    """Render a tic-tac-toe board. The widget calls back via `make_move`."""
+    return "Tic-tac-toe rendered. You're X, AI is O."
+
+
+def _winner(board: list[str]) -> str | None:
+    lines = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+    for a, b, c in lines:
+        if board[a] and board[a] == board[b] == board[c]:
+            return board[a]
+    if all(board):
+        return "draw"
+    return None
+
+
+def _minimax(board: list[str], me: str, opp: str, depth: int = 0) -> tuple[int, int]:
+    """Returns (score, best_move). Score: +10 if `me` wins, -10 if `opp` wins."""
+    w = _winner(board)
+    if w == me:
+        return 10 - depth, -1
+    if w == opp:
+        return depth - 10, -1
+    if w == "draw":
+        return 0, -1
+
+    best_score = -999 if depth % 2 == 0 else 999
+    best_move = -1
+    for i in range(9):
+        if board[i]:
+            continue
+        board[i] = me if depth % 2 == 0 else opp
+        score, _ = _minimax(board, me, opp, depth + 1)
+        board[i] = ""
+        if depth % 2 == 0:
+            if score > best_score:
+                best_score, best_move = score, i
+        else:
+            if score < best_score:
+                best_score, best_move = score, i
+    return best_score, best_move
+
+
+@mcp.tool()
+async def make_move(board: list[str], move: int) -> dict:
+    """Apply the player's move and return the AI's response.
+
+    Args:
+        board: 9-cell board, each "X" / "O" / "" (row-major).
+        move: 0-8 index where the human (X) plays.
+
+    Returns:
+        {"board": list[str], "winner": "X"|"O"|"draw"|null, "ai_move": int|null}
+    """
+    if not isinstance(board, list) or len(board) != 9:
+        raise ValueError("board must be 9 cells")
+    if move < 0 or move > 8 or board[move] != "":
+        raise ValueError("invalid move")
+
+    new_board = list(board)
+    new_board[move] = "X"
+
+    w = _winner(new_board)
+    if w:
+        return {"board": new_board, "winner": w, "ai_move": None}
+
+    _, ai_move = _minimax(new_board, "O", "X")
+    if ai_move >= 0:
+        new_board[ai_move] = "O"
+
+    return {"board": new_board, "winner": _winner(new_board), "ai_move": ai_move}
+
+
+# ---------------------------------------------------------------------------
+# 7. Drawing canvas — large payload via callServerTool.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://drawing",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def drawing_app() -> str:
+    return _load_app("07-drawing.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://drawing"}})
+async def show_drawing() -> str:
+    """Render a drawing canvas. Submissions invoke `save_drawing`."""
+    return "Drawing canvas rendered."
+
+
+@mcp.tool()
+async def save_drawing(title: str, data_url: str) -> str:
+    """Receive a drawing from the show_drawing widget."""
+    size = len(data_url)
+    return f'Saved drawing "{title}" ({size:,} byte data URL).'
+
+
+# ---------------------------------------------------------------------------
+# 8. Todo list — multiple callServerTool round-trips.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://todos",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def todos_app() -> str:
+    return _load_app("08-todos.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://todos"}})
+async def show_todos(items: list[str] | None = None) -> dict:
+    """Render a todo list with optional initial items."""
+    return {"items": items or []}
+
+
+@mcp.tool()
+async def add_todo(text: str) -> str:
+    return f'Added todo: "{text}"'
+
+
+@mcp.tool()
+async def toggle_todo(text: str, done: bool) -> str:
+    return f'{"Completed" if done else "Reopened"}: "{text}"'
+
+
+@mcp.tool()
+async def delete_todo(text: str) -> str:
+    return f'Deleted todo: "{text}"'
+
+
+# ---------------------------------------------------------------------------
+# 9. Weather — Open-Meteo API (no auth).
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://weather",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": ["https://cdn.jsdelivr.net"],
+                "connectDomains": [
+                    "https://geocoding-api.open-meteo.com",
+                    "https://api.open-meteo.com",
+                ],
+            },
+        }
+    },
+)
+def weather_app() -> str:
+    return _load_app("09-weather.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://weather"}})
+async def show_weather(city: str = "San Francisco") -> str:
+    """Render a current-conditions weather card for the given city."""
+    return f"Weather for {city} rendered."
+
+
+# ---------------------------------------------------------------------------
+# 10. 3D viewer — three.js via CDN.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://three-d",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def three_d_app() -> str:
+    return _load_app("10-three-d.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://three-d"}})
+async def show_3d(shape: str = "torus") -> str:
+    """Render a rotating 3D shape (torus / cube / sphere / knot)."""
+    return f"3D viewer rendered (shape={shape})."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))

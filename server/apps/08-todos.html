@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Todos — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --good:#16a34a; --bad:#dc2626; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --good:#22c55e; --bad:#f87171; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:16px 18px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    .sub { margin:0 0 12px; color:var(--muted); font-size:12px; }
+    .new { display:flex; gap:8px; margin-bottom:10px; }
+    .new input { flex:1; padding:8px 10px; background:var(--bg);
+      border:1px solid var(--border); border-radius:6px; color:var(--fg);
+      font-family: inherit; font-size:13px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:6px;
+      padding:8px 14px; font-size:13px; cursor:pointer; font-family: inherit; }
+    .items { list-style:none; padding:0; margin:0; }
+    .item { display:flex; align-items:center; gap:10px; padding:8px 6px;
+      border-bottom: 1px solid var(--border); }
+    .item:last-child { border-bottom: 0; }
+    .item input[type=checkbox] { width:16px; height:16px; accent-color: var(--good); }
+    .item .text { flex:1; font-size:13px; }
+    .item.done .text { text-decoration: line-through; color: var(--muted); }
+    .item .del { background:none; color: var(--muted); border:0; padding:4px 8px;
+      cursor:pointer; font-size:14px; }
+    .item .del:hover { color: var(--bad); }
+    .empty { color: var(--muted); font-size:12px; padding: 12px 4px; text-align:center; }
+    .status { color: var(--muted); font-size:11px; margin-top:8px; min-height:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Todos</h1>
+    <p class="sub">Add / toggle / delete each round-trip to the server.</p>
+    <form class="new" id="form">
+      <input id="text" placeholder="What needs doing?" autocomplete="off" maxlength="120">
+      <button type="submit">Add</button>
+    </form>
+    <ul class="items" id="items"></ul>
+    <div class="empty" id="empty" style="display:none">No todos yet.</div>
+    <div class="status" id="status"></div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  let items = []; // { text, done }
+  const itemsEl = document.getElementById('items');
+  const emptyEl = document.getElementById('empty');
+  const status = document.getElementById('status');
+
+  function render() {
+    itemsEl.innerHTML = '';
+    emptyEl.style.display = items.length === 0 ? 'block' : 'none';
+    items.forEach((it, idx) => {
+      const li = document.createElement('li');
+      li.className = 'item' + (it.done ? ' done' : '');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = it.done;
+      cb.addEventListener('change', () => toggle(idx));
+      const sp = document.createElement('span');
+      sp.className = 'text'; sp.textContent = it.text;
+      const del = document.createElement('button');
+      del.className = 'del'; del.textContent = '×';
+      del.title = 'Delete';
+      del.addEventListener('click', () => remove(idx));
+      li.appendChild(cb); li.appendChild(sp); li.appendChild(del);
+      itemsEl.appendChild(li);
+    });
+  }
+  function setStatus(t) { status.textContent = t; }
+
+  const app = new App({ name: "todos-widget", version: "1.0.0" });
+
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (Array.isArray(args.items)) {
+      items = args.items.map(t => typeof t === "string"
+        ? { text: t, done: false } : { text: String(t.text||t), done: !!t.done });
+      render();
+    }
+  };
+
+  async function add(text) {
+    items.push({ text, done: false });
+    render();
+    try {
+      await app.callServerTool({ name: "add_todo", arguments: { text } });
+      setStatus('Added.');
+    } catch (e) { setStatus('add error: ' + (e?.message || e)); }
+  }
+  async function toggle(idx) {
+    items[idx].done = !items[idx].done;
+    render();
+    try {
+      await app.callServerTool({
+        name: "toggle_todo",
+        arguments: { text: items[idx].text, done: items[idx].done },
+      });
+      setStatus(items[idx].done ? 'Completed.' : 'Reopened.');
+    } catch (e) { setStatus('toggle error: ' + (e?.message || e)); }
+  }
+  async function remove(idx) {
+    const it = items[idx];
+    items.splice(idx, 1);
+    render();
+    try {
+      await app.callServerTool({ name: "delete_todo", arguments: { text: it.text } });
+      setStatus('Deleted.');
+    } catch (e) { setStatus('delete error: ' + (e?.message || e)); }
+  }
+
+  document.getElementById('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('text');
+    const t = input.value.trim();
+    if (!t) return;
+    input.value = '';
+    add(t);
+  });
+
+  app.connect();
+  render();
+</script>
+</body>
+</html>

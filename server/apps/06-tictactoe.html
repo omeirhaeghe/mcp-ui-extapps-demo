@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tic-tac-toe — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --x:#2563eb; --o:#dc2626;
+      --hover:#eef2ff; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --x:#7aa2ff; --o:#f87171;
+      --hover:#1c2030; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:18px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    .sub { margin:0 0 14px; color:var(--muted); font-size:12px; }
+    .board { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
+      max-width:280px; margin:8px auto; }
+    .cell { aspect-ratio:1; background:var(--bg); border:1px solid var(--border);
+      border-radius:8px; font-size:42px; font-weight:700; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-family: inherit; color: var(--fg); }
+    .cell:hover:not(:disabled) { background:var(--hover); }
+    .cell:disabled { cursor: default; }
+    .cell.x { color: var(--x); }
+    .cell.o { color: var(--o); }
+    .row { display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-top:14px; }
+    .status { color: var(--muted); font-size:13px; min-height: 18px; }
+    button.reset { background:var(--accent); color:#fff; border:0;
+      border-radius:5px; padding:6px 12px; font-size:12px; cursor:pointer;
+      font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Tic-tac-toe</h1>
+    <p class="sub">You're <strong style="color:var(--x)">X</strong>, server runs minimax for <strong style="color:var(--o)">O</strong>.</p>
+    <div class="board" id="board"></div>
+    <div class="row">
+      <div class="status" id="status">Your turn.</div>
+      <button class="reset" id="reset">New game</button>
+    </div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  let board = ["","","","","","","","",""];
+  let busy = false;
+  let gameOver = false;
+
+  function render() {
+    boardEl.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+      const b = document.createElement('button');
+      b.className = 'cell' + (board[i] === 'X' ? ' x' : board[i] === 'O' ? ' o' : '');
+      b.textContent = board[i];
+      b.disabled = !!board[i] || gameOver || busy;
+      b.addEventListener('click', () => play(i));
+      boardEl.appendChild(b);
+    }
+  }
+
+  function setStatus(t) { statusEl.textContent = t; }
+
+  async function play(i) {
+    if (board[i] || busy || gameOver) return;
+    busy = true;
+    setStatus('Thinking…');
+    render();
+    try {
+      const result = await app.callServerTool({
+        name: "make_move",
+        arguments: { board, move: i },
+      });
+      const sc = result.structuredContent
+        || JSON.parse(result.content?.[0]?.text || '{}');
+      board = sc.board || board;
+      const winner = sc.winner;
+      if (winner === "X") { gameOver = true; setStatus('You win!'); }
+      else if (winner === "O") { gameOver = true; setStatus('AI wins.'); }
+      else if (winner === "draw") { gameOver = true; setStatus('Draw.'); }
+      else { setStatus('Your turn.'); }
+    } catch (e) {
+      setStatus('Error: ' + (e?.message || e));
+    } finally {
+      busy = false;
+      render();
+    }
+  }
+
+  document.getElementById('reset').addEventListener('click', () => {
+    board = ["","","","","","","","",""];
+    gameOver = false;
+    setStatus('Your turn.');
+    render();
+  });
+
+  const app = new App({ name: "tictactoe-widget", version: "1.0.0" });
+  app.connect();
+  render();
+</script>
+</body>
+</html>

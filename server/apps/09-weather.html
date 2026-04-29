@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Weather — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --bad:#dc2626; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --bad:#f87171; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:18px 20px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    .head { display:flex; justify-content:space-between; align-items:baseline; }
+    h1 { margin:0; font-size:16px; }
+    .loc { color: var(--muted); font-size:12px; }
+    .now { display:flex; align-items:center; gap:14px; margin-top:14px; }
+    .icon { font-size:48px; line-height:1; }
+    .temp { font-size:42px; font-weight:600; font-variant-numeric: tabular-nums; }
+    .desc { color: var(--muted); font-size:13px; margin-top:2px; }
+    .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+      margin-top:14px; padding-top:14px; border-top: 1px solid var(--border); }
+    .stat .lab { color: var(--muted); font-size:11px; text-transform: uppercase; }
+    .stat .val { font-size:14px; font-weight:600; margin-top:2px;
+      font-variant-numeric: tabular-nums; }
+    .err { color: var(--bad); font-size:12px; margin-top:10px; }
+    .skeleton { color: var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <h1 id="city">…</h1>
+      <span class="loc" id="loc"></span>
+    </div>
+    <div id="content"><div class="skeleton">Loading…</div></div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  // WMO weather code → emoji + label.
+  const CODES = {
+    0:["☀️","Clear"], 1:["🌤️","Mainly clear"], 2:["⛅","Partly cloudy"], 3:["☁️","Overcast"],
+    45:["🌫️","Fog"], 48:["🌫️","Rime fog"],
+    51:["🌦️","Light drizzle"], 53:["🌦️","Drizzle"], 55:["🌧️","Heavy drizzle"],
+    61:["🌧️","Light rain"], 63:["🌧️","Rain"], 65:["🌧️","Heavy rain"],
+    71:["🌨️","Light snow"], 73:["🌨️","Snow"], 75:["❄️","Heavy snow"],
+    80:["🌦️","Showers"], 81:["🌧️","Showers"], 82:["⛈️","Violent showers"],
+    95:["⛈️","Thunderstorm"], 96:["⛈️","Storm w/ hail"], 99:["⛈️","Storm w/ heavy hail"],
+  };
+  function codeInfo(c) { return CODES[c] || ["🌡️", "Code " + c]; }
+
+  async function load(city) {
+    document.getElementById('city').textContent = city;
+    const content = document.getElementById('content');
+    content.innerHTML = '<div class="skeleton">Loading…</div>';
+    try {
+      const g = await fetch('https://geocoding-api.open-meteo.com/v1/search?name='
+        + encodeURIComponent(city) + '&count=1');
+      if (!g.ok) throw new Error('geocode HTTP ' + g.status);
+      const gj = await g.json();
+      const loc = gj.results?.[0];
+      if (!loc) throw new Error('City not found');
+      document.getElementById('loc').textContent =
+        [loc.admin1, loc.country].filter(Boolean).join(', ');
+
+      const w = await fetch('https://api.open-meteo.com/v1/forecast?latitude='
+        + loc.latitude + '&longitude=' + loc.longitude
+        + '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code'
+        + '&temperature_unit=celsius&wind_speed_unit=kmh');
+      if (!w.ok) throw new Error('forecast HTTP ' + w.status);
+      const wj = await w.json();
+      const c = wj.current || {};
+      const [icon, desc] = codeInfo(c.weather_code);
+
+      content.innerHTML =
+        '<div class="now">'
+        + '  <div class="icon">' + icon + '</div>'
+        + '  <div>'
+        + '    <div class="temp">' + Math.round(c.temperature_2m) + '°C</div>'
+        + '    <div class="desc">' + desc + '</div>'
+        + '  </div>'
+        + '</div>'
+        + '<div class="grid">'
+        + '  <div class="stat"><div class="lab">Humidity</div><div class="val">' + c.relative_humidity_2m + '%</div></div>'
+        + '  <div class="stat"><div class="lab">Wind</div><div class="val">' + Math.round(c.wind_speed_10m) + ' km/h</div></div>'
+        + '  <div class="stat"><div class="lab">Lat/Lng</div><div class="val">' + loc.latitude.toFixed(2) + ', ' + loc.longitude.toFixed(2) + '</div></div>'
+        + '</div>';
+    } catch (e) {
+      content.innerHTML = '<div class="err">' + e.message + '</div>';
+    }
+  }
+
+  const app = new App({ name: "weather-widget", version: "1.0.0" });
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (args.city) load(args.city);
+  };
+  app.connect().then(() => {
+    if (!document.getElementById('city').textContent.trim() || document.getElementById('city').textContent === '…') {
+      load('San Francisco');
+    }
+  });
+</script>
+</body>
+</html>
