@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Feedback — MCP-UI</title>
+  <title>Feedback — MCP App</title>
   <style>
     :root { color-scheme: light dark;
       --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
@@ -46,8 +46,8 @@
 <body>
   <div class="card" id="card">
     <h1>Quick feedback</h1>
-    <p class="sub">Tests <code>callTool</code> + <code>sendPrompt</code> postMessage.</p>
-    <div class="prompt" id="prompt">{{PROMPT}}</div>
+    <p class="sub">Tests <code>tools/call</code> + <code>ui/message</code>.</p>
+    <div class="prompt" id="prompt">How was the response?</div>
     <form id="form">
       <label>Rating</label>
       <div class="stars" id="stars">
@@ -69,12 +69,35 @@
   </div>
 
 <script>
-  const host = {
-    callTool:   (n, p) => parent.postMessage({ type: "tool", payload: { toolName: n, params: p } }, "*"),
-    sendPrompt: (p)    => parent.postMessage({ type: "prompt", payload: { prompt: p } }, "*"),
-    setHeight:  (h)    => parent.postMessage({ type: "size", payload: { height: h } }, "*"),
-    notify:     (m)    => parent.postMessage({ type: "notify", payload: { message: m } }, "*"),
-  };
+  let nextId = 1;
+  const pending = new Map();
+  function send(m) { parent.postMessage(m, "*"); }
+  function notify(method, params) { send({ jsonrpc: "2.0", method, params }); }
+  function request(method, params) {
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      send({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+  window.addEventListener("message", (e) => {
+    const m = e.data;
+    if (!m || m.jsonrpc !== "2.0") return;
+    if ("result" in m || "error" in m) {
+      const p = pending.get(m.id);
+      if (p) { pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); }
+      return;
+    }
+    if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") {
+      const args = (m.params && m.params.arguments) || {};
+      if (args.prompt) document.getElementById("prompt").textContent = args.prompt;
+    }
+  });
+  request("ui/initialize", {
+    protocolVersion: "2025-06-18",
+    clientInfo: { name: "feedback-widget", version: "1.0.0" },
+    appCapabilities: {},
+  }).then(() => notify("ui/notifications/initialized", {}));
 
   const log = document.getElementById('log');
   const submit = document.getElementById('submit');
@@ -89,22 +112,27 @@
   }));
 
   document.getElementById('send-prompt').addEventListener('click', () => {
-    host.sendPrompt("Can you summarize the key points so far?");
-    log.textContent = 'log: sendPrompt(...)';
+    request("ui/message", {
+      role: "user",
+      content: { type: "text", text: "Can you summarize the key points so far?" },
+    }).then(() => { log.textContent = 'log: ui/message sent'; })
+      .catch((err) => { log.textContent = 'log: ui/message error: ' + (err.message || err.code); });
   });
 
   document.getElementById('form').addEventListener('submit', (e) => {
     e.preventDefault();
     const text = document.getElementById('text').value;
-    host.callTool('submit_feedback', { rating, text });
-    log.textContent = 'log: callTool(submit_feedback, {rating:' + rating + '})';
+    request("tools/call", { name: "submit_feedback", arguments: { rating, text } })
+      .then(() => { log.textContent = 'log: submit_feedback ok'; })
+      .catch((err) => { log.textContent = 'log: submit_feedback error: ' + (err.message || err.code); });
     document.getElementById('form').style.display = 'none';
     document.getElementById('done').classList.add('visible');
     requestAnimationFrame(syncHeight);
   });
 
   function syncHeight() {
-    host.setHeight(document.body.scrollHeight + 8);
+    notify("ui/notifications/size-changed",
+           { width: document.body.scrollWidth, height: document.body.scrollHeight + 8 });
   }
   requestAnimationFrame(syncHeight);
 </script>

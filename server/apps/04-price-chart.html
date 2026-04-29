@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Price chart — MCP App</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --good:#16a34a; --bad:#dc2626; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --good:#22c55e; --bad:#f87171; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:16px 18px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    .header { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+    .symbol { font-size:18px; font-weight:600; }
+    .price { font-size:24px; font-weight:600; font-variant-numeric: tabular-nums; }
+    .change { font-size:13px; font-variant-numeric: tabular-nums; }
+    .change.up { color: var(--good); }
+    .change.down { color: var(--bad); }
+    .controls { display:flex; gap:6px; margin-left:auto; }
+    .ctrl { background:var(--bg); border:1px solid var(--border); color:var(--fg);
+      padding:4px 10px; border-radius:5px; font-size:12px; cursor:pointer;
+      font-family: inherit; }
+    .ctrl.on { background: var(--accent); color:#fff; border-color: transparent; }
+    canvas { width:100% !important; height:200px !important; }
+    .footer { margin-top:10px; padding-top:10px; border-top:1px solid var(--border);
+      display:flex; align-items:center; gap:10px; font-size:11px; color:var(--muted); }
+    .footer a { color: var(--accent); text-decoration: underline; cursor:pointer; }
+    .err { padding:12px; color: var(--bad); font-size:12px; }
+    .skeleton { height: 200px; background: linear-gradient(90deg, var(--bg), var(--card), var(--bg));
+      background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+      border-radius: 6px; }
+    @keyframes shimmer { 0% {background-position:200% 0;} 100% {background-position:-200% 0;} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span class="symbol" id="symbol">BTC</span>
+      <span class="price" id="price">…</span>
+      <span class="change" id="change"></span>
+      <div class="controls">
+        <button class="ctrl on" data-days="1">1D</button>
+        <button class="ctrl" data-days="7">1W</button>
+        <button class="ctrl" data-days="30">1M</button>
+      </div>
+    </div>
+    <div id="chart-wrap"><div class="skeleton"></div></div>
+    <div class="footer">
+      <span>Source: CoinGecko (public API, no auth)</span>
+      <a id="source">Open on CoinGecko →</a>
+    </div>
+  </div>
+
+<script>
+  let nextId = 1;
+  const pending = new Map();
+  function send(m) { parent.postMessage(m, "*"); }
+  function notify(method, params) { send({ jsonrpc: "2.0", method, params }); }
+  function request(method, params) {
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      send({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+
+  const SYM_TO_ID = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana',
+                      DOGE: 'dogecoin', ADA: 'cardano' };
+  let symbol = 'BTC';
+  let id = 'bitcoin';
+  let chart = null;
+  let days = 1;
+  let firstLoadDone = false;
+
+  window.addEventListener("message", (e) => {
+    const m = e.data;
+    if (!m || m.jsonrpc !== "2.0") return;
+    if ("result" in m || "error" in m) {
+      const p = pending.get(m.id);
+      if (p) { pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); }
+      return;
+    }
+    if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") {
+      const args = (m.params && m.params.arguments) || {};
+      if (args.symbol) {
+        symbol = String(args.symbol).toUpperCase();
+        id = SYM_TO_ID[symbol] || 'bitcoin';
+        document.getElementById('symbol').textContent = symbol;
+        load();
+      }
+    }
+  });
+  request("ui/initialize", {
+    protocolVersion: "2025-06-18",
+    clientInfo: { name: "price-chart-widget", version: "1.0.0" },
+    appCapabilities: {},
+  }).then(() => {
+    notify("ui/notifications/initialized", {});
+    if (!firstLoadDone) load();
+  });
+
+  function fmtUsd(n) {
+    if (n == null) return '—';
+    return '$' + n.toLocaleString(undefined, {maximumFractionDigits: n < 1 ? 4 : 2});
+  }
+  function fmtPct(p) {
+    const sign = p >= 0 ? '+' : '';
+    return sign + p.toFixed(2) + '%';
+  }
+  function syncHeight() {
+    notify("ui/notifications/size-changed",
+           { width: document.body.scrollWidth, height: document.body.scrollHeight + 8 });
+  }
+
+  async function load() {
+    firstLoadDone = true;
+    const wrap = document.getElementById('chart-wrap');
+    wrap.innerHTML = '<div class="skeleton"></div>';
+    try {
+      const url = 'https://api.coingecko.com/api/v3/coins/' + id +
+                  '/market_chart?vs_currency=usd&days=' + days;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      const prices = data.prices || [];
+      if (prices.length < 2) throw new Error('No data');
+
+      const labels = prices.map(p => new Date(p[0]));
+      const values = prices.map(p => p[1]);
+      const last = values[values.length - 1];
+      const first = values[0];
+      const pct = ((last - first) / first) * 100;
+
+      document.getElementById('price').textContent = fmtUsd(last);
+      const ch = document.getElementById('change');
+      ch.textContent = fmtPct(pct);
+      ch.className = 'change ' + (pct >= 0 ? 'up' : 'down');
+
+      wrap.innerHTML = '<canvas id="chart"></canvas>';
+      const ctx = document.getElementById('chart').getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 200);
+      grad.addColorStop(0, pct >= 0 ? 'rgba(34,197,94,0.25)' : 'rgba(248,113,113,0.25)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: [{
+          data: values, borderColor: pct >= 0 ? '#22c55e' : '#f87171',
+          backgroundColor: grad, fill: true, tension: 0.25,
+          borderWidth: 1.5, pointRadius: 0,
+        }]},
+        options: {
+          animation: false, plugins: { legend: { display: false } },
+          scales: {
+            x: { type: 'time', time: { unit: days <= 1 ? 'hour' : 'day' },
+                 ticks: { color: '#9ca3af', maxRotation: 0, autoSkipPadding: 20 },
+                 grid: { display: false } },
+            y: { ticks: { color: '#9ca3af',
+                          callback: (v) => v >= 1000 ? '$' + (v/1000).toFixed(1)+'k' : '$'+v.toFixed(2) },
+                 grid: { color: 'rgba(128,128,128,0.15)' } },
+          },
+          maintainAspectRatio: false,
+        },
+      });
+      syncHeight();
+    } catch (e) {
+      wrap.innerHTML = '<div class="err">Could not load price data: ' + e.message + '</div>';
+      syncHeight();
+    }
+  }
+
+  document.querySelectorAll('.ctrl').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.ctrl').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    days = parseInt(b.dataset.days, 10);
+    load();
+  }));
+
+  document.getElementById('source').addEventListener('click', (e) => {
+    e.preventDefault();
+    request("ui/open-link", { url: 'https://www.coingecko.com/en/coins/' + id });
+  });
+</script>
+</body>
+</html>
