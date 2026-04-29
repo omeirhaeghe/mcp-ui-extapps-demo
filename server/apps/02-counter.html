@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Counter — MCP-UI</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:16px; padding:20px 22px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    p { margin:0; color:var(--muted); font-size:13px; }
+    .display { font-size:48px; font-weight:600; margin:16px 0;
+      font-variant-numeric: tabular-nums; color:var(--accent); }
+    .row { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+    button { background:var(--btn); color:var(--btn-fg); border:1px solid var(--border);
+      padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer;
+      font-family:inherit; }
+    button:hover { filter: brightness(1.05); }
+    button.primary { background:var(--accent); color:#fff; border-color:transparent; }
+    .log { margin-top:12px; padding-top:12px; border-top:1px solid var(--border);
+      color:var(--muted); font-size:11px; font-family: ui-monospace, monospace; }
+    .grow { display:none; margin-top:12px; padding:10px 12px; background:var(--bg);
+      border:1px dashed var(--border); border-radius:6px; color:var(--muted);
+      font-size:12px; }
+    .grow.visible { display:block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Counter</h1>
+    <p>Tests inline JS execution and dynamic <code>setHeight</code> on resize.</p>
+    <div class="display" id="value">{{START}}</div>
+    <div class="row">
+      <button id="dec">−1</button>
+      <button id="inc" class="primary">+1</button>
+      <button id="reset">Reset</button>
+      <button id="grow">Grow ↓</button>
+    </div>
+    <div class="grow" id="extra">
+      Extra content appears here. The host should grow the iframe via the
+      <code>size</code> postMessage (action <code>setHeight</code>).
+    </div>
+    <div class="log" id="log">log: ready</div>
+  </div>
+
+<script>
+  // Spec-compliant postMessage helpers — no host-injected window.mcpHost
+  // so we can run the same widget over text/html (inline) AND text/uri-list.
+  const host = {
+    setHeight: (h) => parent.postMessage({ type: "size", payload: { height: h } }, "*"),
+    notify:    (m) => parent.postMessage({ type: "notify", payload: { message: m } }, "*"),
+  };
+
+  let value = parseInt(document.getElementById('value').textContent, 10) || 0;
+  const display = document.getElementById('value');
+  const log = document.getElementById('log');
+  const extra = document.getElementById('extra');
+
+  function set(v) {
+    value = v;
+    display.textContent = String(v);
+    log.textContent = 'log: value=' + v;
+  }
+
+  document.getElementById('inc').addEventListener('click', () => set(value + 1));
+  document.getElementById('dec').addEventListener('click', () => set(value - 1));
+  document.getElementById('reset').addEventListener('click', () => {
+    set(0);
+    extra.classList.remove('visible');
+    requestAnimationFrame(syncHeight);
+  });
+  document.getElementById('grow').addEventListener('click', () => {
+    extra.classList.toggle('visible');
+    requestAnimationFrame(syncHeight);
+  });
+
+  function syncHeight() {
+    const h = document.body.scrollHeight + 8;
+    host.setHeight(h);
+    log.textContent = 'log: setHeight(' + h + ')';
+  }
+
+  // Initial size after first paint.
+  requestAnimationFrame(syncHeight);
+</script>
+</body>
+</html>

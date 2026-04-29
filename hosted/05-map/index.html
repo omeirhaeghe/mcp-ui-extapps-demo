@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Map — MCP-UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../_shared/host-sdk.js"></script>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; } }
+    html,body { margin:0; padding:0; height:100%; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .wrap { margin:14px; background:var(--card); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden; }
+    .header { padding:12px 14px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:10px; }
+    .title { font-size:14px; font-weight:600; }
+    .hint { font-size:11px; color:var(--muted); }
+    #map { height: 360px; }
+    .toolbar { padding: 10px 14px; border-top: 1px solid var(--border);
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; }
+    input[type=text] { flex:1; min-width:160px; padding:6px 10px; background:var(--bg);
+      border:1px solid var(--border); border-radius:5px; color:var(--fg);
+      font-family: inherit; font-size:12px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:5px;
+      padding:6px 12px; font-size:12px; cursor:pointer; font-family: inherit; }
+    button.ghost { background: var(--bg); color: var(--fg); border:1px solid var(--border); }
+    .status { color: var(--muted); font-size:11px; padding: 0 14px 12px; }
+    .leaflet-popup-content a { color: var(--accent); cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Drop a pin</div>
+        <div class="hint">Click anywhere on the map. Pins call <code>save_pin</code> on the host.</div>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div class="toolbar">
+      <input id="label" type="text" placeholder="Label for next pin (optional)" maxlength="60">
+      <button id="clear" class="ghost">Clear pins</button>
+    </div>
+    <div class="status" id="status">Ready.</div>
+  </div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const initLat = parseFloat(params.get('lat') || '37.7749');
+  const initLng = parseFloat(params.get('lng') || '-122.4194');
+  const status = document.getElementById('status');
+  let pins = [];
+
+  L.Icon.Default.imagePath = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
+  const map = L.map('map').setView([initLat, initLng], 12);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19,
+  }).addTo(map);
+
+  function fmtLatLng(lat, lng) {
+    return lat.toFixed(4) + ', ' + lng.toFixed(4);
+  }
+
+  function addPin(lat, lng, label) {
+    const marker = L.marker([lat, lng]).addTo(map);
+    const labelText = (label || '').trim();
+    const display = labelText || fmtLatLng(lat, lng);
+    const osmUrl = 'https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '#map=15/' + lat + '/' + lng;
+    marker.bindPopup(
+      '<strong>' + escHtml(display) + '</strong>' +
+      '<div style="color:#6b7280;font-size:11px;margin-top:2px">' + fmtLatLng(lat, lng) + '</div>' +
+      '<div style="margin-top:6px"><a class="osm-link" data-url="' + osmUrl + '">Open in OSM →</a></div>'
+    );
+    marker.on('click', () => marker.openPopup());
+    pins.push(marker);
+
+    // Notify the host of the new pin via callTool.
+    window.mcpUI.callTool('save_pin', { lat: lat, lng: lng, label: labelText });
+    window.mcpUI.notify('Pin saved: ' + display);
+    status.textContent = 'Saved pin at ' + fmtLatLng(lat, lng) +
+                         (labelText ? ' — "' + labelText + '"' : '');
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g,
+      c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  map.on('click', (e) => {
+    const label = document.getElementById('label').value;
+    addPin(e.latlng.lat, e.latlng.lng, label);
+    document.getElementById('label').value = '';
+  });
+
+  document.getElementById('clear').addEventListener('click', () => {
+    pins.forEach(p => map.removeLayer(p));
+    pins = [];
+    status.textContent = 'Cleared all pins.';
+  });
+
+  // Delegate popup link clicks → openLink.
+  map.getContainer().addEventListener('click', (e) => {
+    const a = e.target.closest('a.osm-link');
+    if (a && a.dataset.url) {
+      e.preventDefault();
+      window.mcpUI.openLink(a.dataset.url);
+    }
+  });
+
+  // Initial size — leaflet needs the iframe to be at least 400px to render usefully.
+  window.mcpUI.setHeight(480);
+</script>
+</body>
+</html>

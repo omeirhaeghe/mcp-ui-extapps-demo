@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Feedback — MCP-UI</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
+      --good:#16a34a; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb;
+      --good:#22c55e; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:16px; padding:18px 20px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    .sub { margin:0 0 14px; color:var(--muted); font-size:12px; }
+    .prompt { font-size:14px; padding:10px 12px; background:var(--bg);
+      border:1px solid var(--border); border-radius:6px; margin-bottom:14px; }
+    label { display:block; font-size:12px; color:var(--muted);
+      margin: 10px 0 6px; }
+    .stars { display:flex; gap:6px; }
+    .star { width:30px; height:30px; border-radius:6px; border:1px solid var(--border);
+      background:var(--bg); cursor:pointer; font-size:16px; line-height:30px;
+      text-align:center; user-select:none; color:var(--muted); }
+    .star.on { background:#fbbf24; color:#fff; border-color:#fbbf24; }
+    textarea { width:100%; box-sizing:border-box; padding:8px 10px;
+      background:var(--bg); border:1px solid var(--border); border-radius:6px;
+      color:var(--fg); font: inherit; min-height:64px; resize:vertical; }
+    .row { display:flex; gap:8px; margin-top:14px; }
+    button { background:var(--btn); color:var(--btn-fg); border:1px solid var(--border);
+      padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer;
+      font-family: inherit; }
+    button.primary { background:var(--accent); color:#fff; border-color:transparent; }
+    button[disabled] { opacity:0.5; cursor:not-allowed; }
+    .done { display:none; padding:14px; text-align:center; color:var(--good);
+      font-size:14px; }
+    .done.visible { display:block; }
+    .log { margin-top:12px; padding-top:12px; border-top:1px solid var(--border);
+      color:var(--muted); font-size:11px; font-family:ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>Quick feedback</h1>
+    <p class="sub">Tests <code>callTool</code> + <code>sendPrompt</code> postMessage.</p>
+    <div class="prompt" id="prompt">{{PROMPT}}</div>
+    <form id="form">
+      <label>Rating</label>
+      <div class="stars" id="stars">
+        <div class="star" data-v="1">★</div>
+        <div class="star" data-v="2">★</div>
+        <div class="star" data-v="3">★</div>
+        <div class="star" data-v="4">★</div>
+        <div class="star" data-v="5">★</div>
+      </div>
+      <label for="text">Comments (optional)</label>
+      <textarea id="text" placeholder="Anything else?"></textarea>
+      <div class="row">
+        <button type="button" id="send-prompt">Reply with template</button>
+        <button type="submit" class="primary" id="submit" disabled>Submit</button>
+      </div>
+    </form>
+    <div class="done" id="done">✓ Submitted — thanks for the feedback.</div>
+    <div class="log" id="log">log: ready</div>
+  </div>
+
+<script>
+  const host = {
+    callTool:   (n, p) => parent.postMessage({ type: "tool", payload: { toolName: n, params: p } }, "*"),
+    sendPrompt: (p)    => parent.postMessage({ type: "prompt", payload: { prompt: p } }, "*"),
+    setHeight:  (h)    => parent.postMessage({ type: "size", payload: { height: h } }, "*"),
+    notify:     (m)    => parent.postMessage({ type: "notify", payload: { message: m } }, "*"),
+  };
+
+  const log = document.getElementById('log');
+  const submit = document.getElementById('submit');
+  const stars = document.querySelectorAll('.star');
+  let rating = 0;
+
+  stars.forEach(s => s.addEventListener('click', () => {
+    rating = parseInt(s.dataset.v, 10);
+    stars.forEach(x => x.classList.toggle('on', parseInt(x.dataset.v, 10) <= rating));
+    submit.disabled = rating === 0;
+    log.textContent = 'log: rating=' + rating;
+  }));
+
+  document.getElementById('send-prompt').addEventListener('click', () => {
+    host.sendPrompt("Can you summarize the key points so far?");
+    log.textContent = 'log: sendPrompt(...)';
+  });
+
+  document.getElementById('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = document.getElementById('text').value;
+    host.callTool('submit_feedback', { rating, text });
+    log.textContent = 'log: callTool(submit_feedback, {rating:' + rating + '})';
+    document.getElementById('form').style.display = 'none';
+    document.getElementById('done').classList.add('visible');
+    requestAnimationFrame(syncHeight);
+  });
+
+  function syncHeight() {
+    host.setHeight(document.body.scrollHeight + 8);
+  }
+  requestAnimationFrame(syncHeight);
+</script>
+</body>
+</html>

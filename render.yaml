@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: mcp-ui-extapps-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install uv && uv sync --frozen || uv sync
+    startCommand: uv run python server/server.py --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: PUBLIC_HOSTED_BASE
+        value: https://omeirhaeghe.github.io/mcp-ui-extapps-demo
+    healthCheckPath: /mcp
