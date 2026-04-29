@@ -23,9 +23,13 @@ from urllib.parse import quote
 from uuid import uuid4
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import EmbeddedResource, ResourceLink, TextContent, TextResourceContents
 
-mcp = FastMCP("MCP-UI Ext-Apps Demo")
+mcp = FastMCP(
+    "MCP-UI Ext-Apps Demo",
+    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+)
 
 APPS_DIR = Path(__file__).parent / "apps"
 DEFAULT_HOSTED_BASE = "https://omeirhaeghe.github.io/mcp-ui-extapps-demo"
