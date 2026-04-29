@@ -22,9 +22,11 @@ from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
+import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import EmbeddedResource, ResourceLink, TextContent, TextResourceContents
+from starlette.middleware.cors import CORSMiddleware
 
 mcp = FastMCP(
     "MCP-UI Ext-Apps Demo",
@@ -199,4 +201,13 @@ if __name__ == "__main__":
 
     mcp.settings.host = args.host
     mcp.settings.port = args.port
-    mcp.run(transport="streamable-http")
+
+    app = mcp.streamable_http_app()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["mcp-session-id"],
+    )
+    uvicorn.run(app, host=args.host, port=args.port)
