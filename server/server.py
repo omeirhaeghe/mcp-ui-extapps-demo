@@ -29,7 +29,7 @@ from mcp.types import EmbeddedResource, ResourceLink, TextContent, TextResourceC
 from starlette.middleware.cors import CORSMiddleware
 
 mcp = FastMCP(
-    "MCP-UI Ext-Apps Demo",
+    "Toto",
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
 
