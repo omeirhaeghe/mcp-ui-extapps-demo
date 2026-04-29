@@ -46,11 +46,48 @@
 </head>
 <body>
   <div class="card">
-    <h1>Hello, <span class="accent">{{NAME}}</span> 👋</h1>
-    <p>This is the simplest possible MCP-UI ext-app — static HTML, no scripts.</p>
+    <h1>Hello, <span id="name" class="accent">world</span> 👋</h1>
+    <p>This is the simplest possible MCP App — static HTML, no scripts beyond the protocol shim.</p>
     <div class="meta">
-      Resource type <code>EmbeddedResource</code> · MIME <code>text/html</code> · Rendered {{TIMESTAMP}}
+      Resource <code>ui://hello</code> · MIME <code>text/html;profile=mcp-app</code> · Rendered <span id="ts">just now</span>
     </div>
   </div>
+
+  <script>
+    // SEP-1865 init handshake + tool-input listener.
+    let nextId = 1;
+    const pending = new Map();
+
+    function send(msg) { parent.postMessage(msg, "*"); }
+    function notify(method, params) { send({ jsonrpc: "2.0", method, params }); }
+    function request(method, params) {
+      const id = nextId++;
+      return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        send({ jsonrpc: "2.0", id, method, params });
+      });
+    }
+
+    window.addEventListener("message", (e) => {
+      const m = e.data;
+      if (!m || m.jsonrpc !== "2.0") return;
+      if ("result" in m || "error" in m) {
+        const p = pending.get(m.id);
+        if (p) { pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); }
+        return;
+      }
+      if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") {
+        const args = (m.params && m.params.arguments) || {};
+        if (args.name) document.getElementById("name").textContent = args.name;
+        document.getElementById("ts").textContent = new Date().toLocaleTimeString();
+      }
+    });
+
+    request("ui/initialize", {
+      protocolVersion: "2025-06-18",
+      clientInfo: { name: "hello-widget", version: "1.0.0" },
+      appCapabilities: {},
+    }).then(() => notify("ui/notifications/initialized", {}));
+  </script>
 </body>
 </html>

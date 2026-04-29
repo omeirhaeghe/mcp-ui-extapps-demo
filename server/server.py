@@ -78,22 +78,22 @@ def _resource_link(uri: str, mime: str = "text/html", name: str = "") -> Resourc
 
 
 # ---------------------------------------------------------------------------
-# 1. Hello — static text/html, no JS. Simplest possible widget.
+# 1. Hello — static text/html, no JS beyond protocol shim.
 # ---------------------------------------------------------------------------
 
-@mcp.tool()
-async def show_hello(name: str = "world") -> list:
+@mcp.resource(
+    "ui://hello",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True}},
+)
+def hello_app() -> str:
+    return _load_app("01-hello.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://hello"}})
+async def show_hello(name: str = "world") -> str:
     """Render a static greeting card for the given name."""
-    html = (
-        _load_app("01-hello.html")
-        .replace("{{NAME}}", _esc(name))
-        .replace("{{TIMESTAMP}}", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
-    )
-    uri = f"ui://hello/{uuid4().hex}"
-    return [
-        TextContent(type="text", text=f"Showing hello widget for {name}."),
-        _embedded_html(uri, html),
-    ]
+    return f"Showing hello widget for {name}."
 
 
 # ---------------------------------------------------------------------------
