@@ -10,4 +10,3 @@ services:
         value: "3.11"
       - key: PUBLIC_HOSTED_BASE
         value: https://omeirhaeghe.github.io/mcp-ui-extapps-demo
-    healthCheckPath: /mcp
