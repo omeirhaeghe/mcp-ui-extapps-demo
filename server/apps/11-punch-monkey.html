@@ -157,16 +157,18 @@
     bestEl.textContent = String(best);
     const ppm = (score * 60 / ROUND_SECONDS).toFixed(0);
     endEl.textContent = 'Final: ' + score + ' punches (' + ppm + ' / min)';
-    status.textContent = 'Sending score…';
-    try {
-      await app.callServerTool({
-        name: "record_punch_score",
-        arguments: { score, seconds: ROUND_SECONDS },
+    status.textContent = 'Round complete.';
+    // Fire-and-forget the server callback. If the MCP session was recycled
+    // mid-game (e.g. the server redeployed), don't crash the widget — the
+    // user already sees their score.
+    app.callServerTool({
+      name: "record_punch_score",
+      arguments: { score, seconds: ROUND_SECONDS },
+    }).then(() => { status.textContent = 'Round complete · score synced.'; })
+      .catch((e) => {
+        console.warn('record_punch_score failed:', e);
+        status.textContent = 'Round complete · score not synced (' + (e?.message || 'session recycled') + ').';
       });
-      status.textContent = 'Score recorded.';
-    } catch (e) {
-      status.textContent = 'record error: ' + (e?.message || e);
-    }
   }
 
   function reset() {
