@@ -362,6 +362,223 @@ async def show_3d(shape: str = "torus") -> str:
     return f"3D viewer rendered (shape={shape})."
 
 
+# ---------------------------------------------------------------------------
+# 11. Punch the Monkey — timed clicker game.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://punch-monkey",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def punch_monkey_app() -> str:
+    return _load_app("11-punch-monkey.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://punch-monkey"}})
+async def show_punch_monkey() -> str:
+    """Render a 15-second punch-the-monkey clicker game."""
+    return "Punch the monkey rendered. You have 15 seconds."
+
+
+@mcp.tool()
+async def record_punch_score(score: int, seconds: int) -> str:
+    """Receive the final score from the punch_monkey widget."""
+    ppm = (score * 60.0 / seconds) if seconds else 0.0
+    return f"Score recorded: {score} punches in {seconds}s ({ppm:.0f}/min)."
+
+
+# ---------------------------------------------------------------------------
+# 12. Masquerade — Apple-II-style branching adventure. The picture lives
+# in the widget; the user types their answer in the chat, the model
+# translates it to advance_adventure(scene, answer).
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://adventure",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def adventure_app() -> str:
+    return _load_app("12-adventure.html")
+
+
+_SCENES: dict[str, dict] = {
+    "gates": {
+        "id": "gates",
+        "art": "🏰",
+        "title": "The Castle Gates",
+        "description": (
+            "Wrought-iron gates loom before you in the moonlight. Faint waltz music "
+            "drifts from the castle. A masked butler peers through the bars. To one "
+            "side, a low hedge marks the garden wall."
+        ),
+        "hint": "Knock, or sneak around through the garden?",
+        "tone": None,
+    },
+    "butler": {
+        "id": "butler",
+        "art": "🎩",
+        "title": "The Masked Butler",
+        "description": (
+            "The butler bows. \"State your business, traveller. The masquerade is "
+            "by invitation only.\" His gloved hand extends, expectant."
+        ),
+        "hint": "Show the invitation, or claim to be a guest?",
+        "tone": None,
+    },
+    "garden": {
+        "id": "garden",
+        "art": "🌹",
+        "title": "The Moonlit Garden",
+        "description": (
+            "Roses glow silver in the moonlight. On a marble pedestal sits an ornate "
+            "key beside a half-empty wine glass. A side door to the ballroom stands "
+            "ajar."
+        ),
+        "hint": "Take the key, or slip through the door empty-handed?",
+        "tone": None,
+    },
+    "ballroom": {
+        "id": "ballroom",
+        "art": "💃",
+        "title": "The Ballroom",
+        "description": (
+            "Masked dancers spin under crystal chandeliers. A figure in a raven mask "
+            "watches you from a balcony. Nearby, a server offers champagne — and "
+            "discreetly, a folded note."
+        ),
+        "hint": "Approach the raven, or take the note?",
+        "tone": "gold",
+    },
+    "raven": {
+        "id": "raven",
+        "art": "🪶",
+        "title": "The Raven Mask",
+        "description": (
+            "The raven leans close. \"You shouldn't be here. But since you are — "
+            "the host is not who they claim. Look behind the mirror in the library.\""
+        ),
+        "hint": "Head to the library, or confront the host directly?",
+        "tone": "gold",
+    },
+    "library": {
+        "id": "library",
+        "art": "📜",
+        "title": "Behind the Mirror",
+        "description": (
+            "The mirror swings open to reveal a hidden alcove. Inside: the real "
+            "host, bound and gagged. Tonight's gala has been a charade. You've "
+            "uncovered the masquerade."
+        ),
+        "hint": "Mystery solved.",
+        "tone": "win",
+    },
+    "caught": {
+        "id": "caught",
+        "art": "⚔️",
+        "title": "Caught",
+        "description": (
+            "Guards in plumed helmets seize your arms. \"Insolence!\" The "
+            "imposter-host smiles thinly as you're dragged from the hall. The "
+            "mystery dies with you."
+        ),
+        "hint": "Game over.",
+        "tone": "lose",
+    },
+    "lost": {
+        "id": "lost",
+        "art": "🌫️",
+        "title": "Lost in the Mist",
+        "description": (
+            "You wander too far from the castle and lose your bearings in the "
+            "fog. By the time you find your way back, dawn has broken and the "
+            "guests are gone."
+        ),
+        "hint": "Game over.",
+        "tone": "lose",
+    },
+}
+
+# (current_scene, normalized_keyword) -> next_scene
+_TRANSITIONS: dict[tuple[str, str], str] = {
+    ("gates", "knock"):       "butler",
+    ("gates", "sneak"):       "garden",
+    ("gates", "leave"):       "lost",
+    ("butler", "invitation"): "ballroom",
+    ("butler", "guest"):      "caught",
+    ("butler", "lie"):        "caught",
+    ("butler", "leave"):      "lost",
+    ("garden", "key"):        "ballroom",
+    ("garden", "door"):       "caught",
+    ("garden", "wine"):       "caught",
+    ("ballroom", "raven"):    "raven",
+    ("ballroom", "note"):     "library",
+    ("ballroom", "host"):     "caught",
+    ("raven", "library"):     "library",
+    ("raven", "host"):        "caught",
+}
+
+# Map common synonyms onto the canonical keyword used by _TRANSITIONS.
+_SYNONYMS: dict[str, str] = {
+    "knock on the door": "knock", "knock door": "knock",
+    "sneak around": "sneak", "garden": "sneak", "hedge": "sneak",
+    "leave": "leave", "go away": "leave", "give up": "leave",
+    "show invitation": "invitation", "show the invitation": "invitation",
+    "i'm a guest": "guest", "im a guest": "guest", "claim guest": "guest",
+    "lie": "lie",
+    "take key": "key", "take the key": "key", "grab key": "key",
+    "go through door": "door", "use door": "door", "enter door": "door",
+    "drink wine": "wine", "take wine": "wine",
+    "approach raven": "raven", "talk to raven": "raven", "raven mask": "raven",
+    "take note": "note", "read note": "note",
+    "confront host": "host", "approach host": "host",
+    "library": "library", "mirror": "library", "behind mirror": "library",
+}
+
+
+def _normalize(answer: str) -> str:
+    a = (answer or "").strip().lower()
+    if a in _SYNONYMS:
+        return _SYNONYMS[a]
+    for phrase, canonical in _SYNONYMS.items():
+        if phrase in a:
+            return canonical
+    return a
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://adventure"}})
+async def show_adventure() -> dict:
+    """Start the Masquerade adventure. The user reads the scene, then types
+    their answer in chat — call advance_adventure to progress."""
+    return {"scene": _SCENES["gates"]}
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://adventure"}})
+async def advance_adventure(scene: str, answer: str) -> dict:
+    """Advance the Masquerade adventure.
+
+    Args:
+        scene: The current scene id (returned by the previous call).
+        answer: The user's chat response. The server normalizes it and
+                looks up the next scene. Unknown answers loop in place
+                with an updated hint.
+    """
+    current = _SCENES.get(scene)
+    if not current:
+        return {"scene": _SCENES["gates"]}
+    if current.get("tone") in ("win", "lose"):
+        return {"scene": current}
+
+    key = _normalize(answer)
+    next_id = _TRANSITIONS.get((scene, key))
+    if not next_id:
+        retry = dict(current)
+        retry["hint"] = f'Hmm — "{answer}" doesn\'t fit. {current.get("hint", "")}'
+        return {"scene": retry}
+    return {"scene": _SCENES[next_id]}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))

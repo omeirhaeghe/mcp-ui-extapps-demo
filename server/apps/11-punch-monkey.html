@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Punch the Monkey — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --hot:#dc2626; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --hot:#f87171; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      overflow: hidden; user-select: none; }
+    .card { margin:14px; padding:18px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px;
+      text-align:center; position: relative; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    .sub { margin:0 0 14px; color:var(--muted); font-size:12px; }
+    .stage { position:relative; width:100%; height:240px;
+      background: linear-gradient(180deg,
+        color-mix(in oklab, var(--accent) 8%, var(--bg)),
+        var(--bg));
+      border:1px solid var(--border); border-radius:10px;
+      overflow: hidden; }
+    .monkey { position:absolute; left:50%; top:50%;
+      transform: translate(-50%, -50%);
+      font-size: 96px; line-height: 1; cursor: pointer;
+      transition: transform 0.08s ease-out;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.18)); }
+    .monkey:hover { transform: translate(-50%, -50%) scale(1.04); }
+    .monkey.hit { animation: shake 0.18s; }
+    @keyframes shake {
+      0%   { transform: translate(-50%, -50%) rotate(0); }
+      25%  { transform: translate(calc(-50% + 6px), -50%) rotate(-6deg); }
+      50%  { transform: translate(calc(-50% - 6px), -50%) rotate(6deg); }
+      75%  { transform: translate(calc(-50% + 4px), -50%) rotate(-3deg); }
+      100% { transform: translate(-50%, -50%) rotate(0); }
+    }
+    .pop { position:absolute; pointer-events:none; font-weight:700;
+      color: var(--hot); font-size: 22px; opacity: 1;
+      animation: pop 0.7s forwards; }
+    @keyframes pop {
+      0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+      20%  { transform: translate(-50%, -10px) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -60px) scale(1); opacity: 0; }
+    }
+    .stats { display:flex; justify-content:space-around; margin-top:14px;
+      padding-top:14px; border-top:1px solid var(--border); }
+    .stat .lab { font-size:11px; color:var(--muted); text-transform:uppercase; }
+    .stat .val { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .row { display:flex; gap:8px; justify-content:center; margin-top:14px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:6px;
+      padding:8px 14px; font-size:13px; cursor:pointer; font-family: inherit; }
+    button.ghost { background:var(--bg); color:var(--fg);
+      border:1px solid var(--border); }
+    .status { color:var(--muted); font-size:11px; margin-top:10px; min-height:14px; }
+    .end { font-size: 13px; margin-top:10px; color: var(--accent); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Punch the Monkey 🥊</h1>
+    <p class="sub">15 seconds. Click as fast as you can.</p>
+    <div class="stage" id="stage">
+      <div class="monkey" id="monkey">🐵</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="lab">Score</div><div class="val" id="score">0</div></div>
+      <div class="stat"><div class="lab">Time</div><div class="val" id="time">15.0</div></div>
+      <div class="stat"><div class="lab">Best</div><div class="val" id="best">0</div></div>
+    </div>
+    <div class="row">
+      <button id="start">Start</button>
+      <button id="reset" class="ghost">Reset</button>
+    </div>
+    <div class="end" id="end"></div>
+    <div class="status" id="status">Press Start to begin.</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const FACES = ['🐵', '🙈', '🙉', '🙊'];
+  const REACTS = ['💥', '⭐', '✨', '💫', '🔥'];
+  const ROUND_SECONDS = 15;
+
+  const stage   = document.getElementById('stage');
+  const monkey  = document.getElementById('monkey');
+  const scoreEl = document.getElementById('score');
+  const timeEl  = document.getElementById('time');
+  const bestEl  = document.getElementById('best');
+  const status  = document.getElementById('status');
+  const endEl   = document.getElementById('end');
+
+  let score = 0;
+  let best = 0;
+  let running = false;
+  let endsAt = 0;
+  let tickHandle = null;
+
+  function setMonkeyFace() {
+    const idx = Math.min(FACES.length - 1, Math.floor(score / 5));
+    monkey.textContent = FACES[idx];
+  }
+  function popFloater(x, y, txt) {
+    const el = document.createElement('div');
+    el.className = 'pop';
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    el.textContent = txt;
+    stage.appendChild(el);
+    setTimeout(() => el.remove(), 750);
+  }
+
+  monkey.addEventListener('click', (e) => {
+    if (!running) return;
+    score += 1;
+    scoreEl.textContent = String(score);
+    setMonkeyFace();
+    monkey.classList.remove('hit');
+    void monkey.offsetWidth;          // restart anim
+    monkey.classList.add('hit');
+    const r = stage.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    const reaction = (score % 5 === 0)
+      ? REACTS[Math.floor(Math.random() * REACTS.length)]
+      : '+1';
+    popFloater(x, y, reaction);
+  });
+
+  function tick() {
+    const remaining = Math.max(0, (endsAt - Date.now()) / 1000);
+    timeEl.textContent = remaining.toFixed(1);
+    if (remaining <= 0) end();
+    else tickHandle = requestAnimationFrame(tick);
+  }
+
+  function start() {
+    score = 0;
+    scoreEl.textContent = '0';
+    setMonkeyFace();
+    endEl.textContent = '';
+    running = true;
+    endsAt = Date.now() + ROUND_SECONDS * 1000;
+    status.textContent = 'Punch!';
+    tick();
+  }
+
+  async function end() {
+    running = false;
+    cancelAnimationFrame(tickHandle);
+    timeEl.textContent = '0.0';
+    if (score > best) best = score;
+    bestEl.textContent = String(best);
+    const ppm = (score * 60 / ROUND_SECONDS).toFixed(0);
+    endEl.textContent = 'Final: ' + score + ' punches (' + ppm + ' / min)';
+    status.textContent = 'Sending score…';
+    try {
+      await app.callServerTool({
+        name: "record_punch_score",
+        arguments: { score, seconds: ROUND_SECONDS },
+      });
+      status.textContent = 'Score recorded.';
+    } catch (e) {
+      status.textContent = 'record error: ' + (e?.message || e);
+    }
+  }
+
+  function reset() {
+    running = false;
+    cancelAnimationFrame(tickHandle);
+    score = 0;
+    scoreEl.textContent = '0';
+    timeEl.textContent = ROUND_SECONDS.toFixed(1);
+    setMonkeyFace();
+    endEl.textContent = '';
+    status.textContent = 'Press Start to begin.';
+  }
+
+  document.getElementById('start').addEventListener('click', start);
+  document.getElementById('reset').addEventListener('click', reset);
+
+  const app = new App({ name: "punch-monkey-widget", version: "1.0.0" });
+  app.connect();
+</script>
+</body>
+</html>

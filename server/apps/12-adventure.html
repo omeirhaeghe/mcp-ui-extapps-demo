@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Masquerade — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#7c3aed; --gold:#b8860b; --bad:#dc2626; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#a78bfa; --gold:#e0c989; --bad:#f87171; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:0; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .scene { position: relative; width: 100%; aspect-ratio: 16 / 9;
+      background: radial-gradient(ellipse at center,
+        color-mix(in oklab, var(--accent) 18%, var(--bg)),
+        var(--bg) 70%);
+      display:flex; align-items:center; justify-content:center; }
+    .art { font-size: 100px; line-height: 1; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.25)); }
+    .header { padding: 14px 16px 4px; }
+    .title { font-size: 18px; font-weight: 700; letter-spacing: 0.2px; }
+    .title.gold { color: var(--gold); }
+    .title.win { color: var(--accent); }
+    .title.lose { color: var(--bad); }
+    .body { padding: 4px 16px 14px; }
+    .desc { font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
+    .hint { display:inline-block; padding: 5px 9px; border-radius: 999px;
+      background: color-mix(in oklab, var(--accent) 15%, transparent);
+      color: var(--accent); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.4px; text-transform: uppercase; }
+    .footer { padding: 10px 16px; font-size: 11px; color: var(--muted);
+      border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="scene"><div class="art" id="art">🏰</div></div>
+    <div class="header"><div class="title" id="title">Loading…</div></div>
+    <div class="body">
+      <p class="desc" id="desc">Awaiting scene…</p>
+      <span class="hint" id="hint" style="display:none">Type your answer in chat</span>
+    </div>
+    <div class="footer">Reply in the chat below — the model will advance the story.</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  function render(scene) {
+    document.getElementById('art').textContent = scene.art || '❓';
+    const t = document.getElementById('title');
+    t.textContent = scene.title || '';
+    t.className = 'title' + (scene.tone ? ' ' + scene.tone : '');
+    document.getElementById('desc').textContent = scene.description || '';
+    const hint = document.getElementById('hint');
+    if (scene.hint) { hint.textContent = scene.hint; hint.style.display = 'inline-block'; }
+    else { hint.style.display = 'none'; }
+  }
+
+  const app = new App({ name: "adventure-widget", version: "1.0.0" });
+  app.ontoolresult = (result) => {
+    const sc = result.structuredContent
+      || (() => { try { return JSON.parse(result.content?.[0]?.text || '{}'); } catch { return {}; } })();
+    if (sc && sc.scene) render(sc.scene);
+  };
+  app.connect();
+</script>
+</body>
+</html>
