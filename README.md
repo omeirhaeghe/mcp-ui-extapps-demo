@@ -174,9 +174,4 @@ MIT. Have fun.
 
 ---
 
-### Suggested GitHub topics
 
-When making the repo public, add these topics in **Settings → Topics** for
-discoverability: `mcp`, `mcp-server`, `mcp-apps`, `model-context-protocol`,
-`sep-1865`, `ext-apps`, `claude`, `anthropic`, `chatgpt`, `interactive-widgets`,
-`ai-tools`, `python`, `fastmcp`, `render-deploy`.
