@@ -1,7 +1,7 @@
 # MCP Apps Demo Server
 
 A reference [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) server you
-can deploy in one click — twelve interactive widgets that exercise every part of
+can deploy in one click — thirteen interactive widgets that exercise every part of
 the spec. Use it to test your own MCP host, prototype your own widgets, or play
 with the protocol.
 
@@ -21,7 +21,7 @@ with the protocol.
 
 ## The widgets
 
-All twelve are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
+All thirteen are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
 matching resource is registered with `text/html;profile=mcp-app`, and the
 client-side JS uses the official [`@modelcontextprotocol/ext-apps`](https://www.npmjs.com/package/@modelcontextprotocol/ext-apps) SDK.
 
@@ -39,6 +39,7 @@ client-side JS uses the official [`@modelcontextprotocol/ext-apps`](https://www.
 | 10 | `show_3d` | Rotating 3D cube / sphere / torus / knot | three.js + WebGL via CDN |
 | 11 | `show_punch_monkey` | 15-second clicker mini-game | High-frequency client-side state, end-of-round score callback |
 | 12 | `show_adventure` | Branching Apple-II-style mystery | Picture-in-widget, answers-in-chat — model orchestrates the story |
+| 13 | `show_hover` | Spotlight that follows the cursor over hidden words | Pure-hover interaction — `mousemove` / `mouseenter` / `mouseleave`, no clicks |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
@@ -114,8 +115,8 @@ declares `_meta.ui.resourceUri` so spec-aware hosts know to render the widget.
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  This server (Python, FastMCP)                                   │
-│  ─ 12 ui://… resources, mime "text/html;profile=mcp-app"         │
-│  ─ 12 widget-emitting tools with _meta.ui.resourceUri            │
+│  ─ 13 ui://… resources, mime "text/html;profile=mcp-app"         │
+│  ─ 13 widget-emitting tools with _meta.ui.resourceUri            │
 │  ─ N callback tools (save_pin, make_move, save_drawing, …)       │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -125,7 +126,7 @@ declares `_meta.ui.resourceUri` so spec-aware hosts know to render the widget.
 ```
 .
 ├── server/
-│   ├── server.py          FastMCP server, 12 widgets + callbacks
+│   ├── server.py          FastMCP server, 13 widgets + callbacks
 │   └── apps/              Self-contained widget HTML (one file each)
 ├── render.yaml            Render blueprint (one-click deploy)
 ├── pyproject.toml         uv / pip dependencies

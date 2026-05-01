@@ -579,6 +579,25 @@ async def advance_adventure(scene: str, answer: str) -> dict:
     return {"scene": _SCENES[next_id]}
 
 
+# ---------------------------------------------------------------------------
+# 13. Hover spotlight — pure-hover demo (mousemove / mouseenter / mouseleave).
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://hover",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def hover_app() -> str:
+    return _load_app("13-hover.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://hover"}})
+async def show_hover() -> str:
+    """Render a hover-only spotlight panel — no clicks, just mouse movement."""
+    return "Hover spotlight rendered. Move your mouse over the panel."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))

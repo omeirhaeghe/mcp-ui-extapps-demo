@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hover spotlight — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#7c3aed; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#a78bfa; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:14px; padding:14px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    .sub { margin:0 0 12px; color:var(--muted); font-size:12px; }
+
+    .stage { position: relative; height: 280px; border-radius: 10px;
+      overflow: hidden; cursor: none;
+      background: linear-gradient(135deg, #f43f5e 0%, #f59e0b 25%,
+        #10b981 50%, #3b82f6 75%, #8b5cf6 100%);
+    }
+    .veil { position:absolute; inset:0; pointer-events:none;
+      background: #000; transition: background 0.15s;
+      -webkit-mask-image: radial-gradient(circle 90px at -200px -200px,
+        transparent 0%, rgba(0,0,0,0.85) 80%);
+              mask-image: radial-gradient(circle 90px at -200px -200px,
+        transparent 0%, rgba(0,0,0,0.85) 80%);
+    }
+    .word { position:absolute; color:#fff; font-weight:700;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.4); user-select:none;
+      pointer-events:none; }
+    .word.s { font-size: 14px; }
+    .word.m { font-size: 22px; }
+    .word.l { font-size: 36px; }
+    .cursor-dot { position:absolute; width: 10px; height: 10px;
+      border-radius: 50%; background: #fff; pointer-events: none;
+      transform: translate(-50%, -50%); mix-blend-mode: difference;
+      box-shadow: 0 0 12px rgba(255,255,255,0.6); }
+    .cursor-ring { position:absolute; width: 180px; height: 180px;
+      border-radius: 50%; border: 1px dashed rgba(255,255,255,0.45);
+      pointer-events: none; transform: translate(-50%, -50%); }
+
+    .stats { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      margin-top:12px; padding-top:12px; border-top: 1px solid var(--border); }
+    .stat .lab { font-size:10px; color:var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .stat .val { font-size:16px; font-weight:600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .footer { margin-top:10px; color:var(--muted); font-size:11px; }
+    .badge { display:inline-block; padding: 2px 7px; border-radius: 999px;
+      font-size: 10px; letter-spacing: .3px; text-transform: uppercase;
+      background: color-mix(in oklab, var(--accent) 20%, transparent);
+      color: var(--accent); margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hover spotlight <span class="badge" id="badge">awake</span></h1>
+    <p class="sub">Move your mouse over the panel. The spotlight follows it; words appear when the light hits them. Test bed for <code>mousemove</code> / <code>mouseenter</code> / <code>mouseleave</code>.</p>
+
+    <div class="stage" id="stage">
+      <span class="word l" style="left: 8%;  top: 18%;">SECRET</span>
+      <span class="word m" style="left: 60%; top: 12%;">spec-compliant</span>
+      <span class="word s" style="left: 12%; top: 62%;">ui://hover</span>
+      <span class="word m" style="left: 55%; top: 70%;">mcp-app</span>
+      <span class="word s" style="left: 38%; top: 42%;">try the corners</span>
+      <span class="word l" style="left: 30%; top: 80%;">✨</span>
+
+      <div class="veil" id="veil"></div>
+      <div class="cursor-ring" id="ring"></div>
+      <div class="cursor-dot"  id="dot"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="lab">x</div><div class="val" id="x">—</div></div>
+      <div class="stat"><div class="lab">y</div><div class="val" id="y">—</div></div>
+      <div class="stat"><div class="lab">distance</div><div class="val" id="dist">0 px</div></div>
+      <div class="stat"><div class="lab">hovered</div><div class="val" id="time">0.0 s</div></div>
+    </div>
+    <div class="footer">Idle for 2 seconds → spotlight pulses. Leave the panel → returns to dark.</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const stage = document.getElementById('stage');
+  const veil  = document.getElementById('veil');
+  const dot   = document.getElementById('dot');
+  const ring  = document.getElementById('ring');
+  const xEl   = document.getElementById('x');
+  const yEl   = document.getElementById('y');
+  const distEl= document.getElementById('dist');
+  const timeEl= document.getElementById('time');
+  const badge = document.getElementById('badge');
+
+  let inside = false;
+  let lastX = 0, lastY = 0;
+  let totalDist = 0;
+  let hoverStart = 0;
+  let hoverElapsedMs = 0;
+  let idleTimer = null;
+  let pulse = false;
+
+  function setBadge(label) { badge.textContent = label; }
+
+  function setSpotlight(x, y, radius = 90) {
+    const m = `radial-gradient(circle ${radius}px at ${x}px ${y}px,
+                 transparent 0%, rgba(0,0,0,0.85) 80%)`;
+    veil.style.webkitMaskImage = m;
+    veil.style.maskImage = m;
+    dot.style.left = x + 'px';
+    dot.style.top  = y + 'px';
+    ring.style.left = x + 'px';
+    ring.style.top  = y + 'px';
+  }
+
+  stage.addEventListener('mouseenter', (e) => {
+    inside = true;
+    setBadge('hovering');
+    hoverStart = performance.now();
+    const r = stage.getBoundingClientRect();
+    lastX = e.clientX - r.left;
+    lastY = e.clientY - r.top;
+    setSpotlight(lastX, lastY);
+  });
+  stage.addEventListener('mouseleave', () => {
+    inside = false;
+    if (hoverStart) hoverElapsedMs += performance.now() - hoverStart;
+    hoverStart = 0;
+    setBadge('left');
+    setSpotlight(-300, -300);
+    if (idleTimer) clearTimeout(idleTimer);
+    pulse = false;
+  });
+  stage.addEventListener('mousemove', (e) => {
+    const r = stage.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    const dx = x - lastX, dy = y - lastY;
+    totalDist += Math.hypot(dx, dy);
+    lastX = x; lastY = y;
+    setSpotlight(x, y, pulse ? 130 : 90);
+    xEl.textContent = Math.round(x);
+    yEl.textContent = Math.round(y);
+    distEl.textContent = Math.round(totalDist) + ' px';
+    pulse = false;
+    setBadge('hovering');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if (!inside) return;
+      pulse = true;
+      setBadge('idle');
+      setSpotlight(lastX, lastY, 130);
+    }, 2000);
+  });
+
+  function tickHoverTime() {
+    const live = inside && hoverStart ? performance.now() - hoverStart : 0;
+    timeEl.textContent = ((hoverElapsedMs + live) / 1000).toFixed(1) + ' s';
+    requestAnimationFrame(tickHoverTime);
+  }
+  tickHoverTime();
+
+  const app = new App({ name: "hover-widget", version: "1.0.0" });
+  app.connect();
+</script>
+</body>
+</html>
