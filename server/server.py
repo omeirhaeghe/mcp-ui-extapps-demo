@@ -598,6 +598,31 @@ async def show_hover() -> str:
     return "Hover spotlight rendered. Move your mouse over the panel."
 
 
+# ---------------------------------------------------------------------------
+# 14. Florida Man — Frogger-style crossing dodging golf carts.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://florida-man",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def florida_man_app() -> str:
+    return _load_app("14-florida-man.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://florida-man"}})
+async def show_florida_man() -> str:
+    """Cross the road as Florida Man without getting hit by golf carts."""
+    return "Florida Man crossing rendered. Use arrow keys / WASD or the D-pad."
+
+
+@mcp.tool()
+async def record_florida_score(crossings: int, deaths: int) -> str:
+    """Receive the final score from the Florida Man widget."""
+    return f"Florida Man recorded: {crossings} crossings, {deaths} deaths."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
