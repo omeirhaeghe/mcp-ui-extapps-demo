@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Internal Counter — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
+      --warn:#f59e0b; --good:#10b981; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:16px; padding:18px 22px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    p { margin:0; color:var(--muted); font-size:13px; }
+    .display { font-size:48px; font-weight:600; margin:14px 0 6px;
+      font-variant-numeric: tabular-nums; color:var(--accent); }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+    button { background:var(--btn); color:var(--btn-fg); border:1px solid var(--border);
+      padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer;
+      font-family:inherit; }
+    button.primary { background:var(--accent); color:#fff; border-color:transparent; }
+    .verify { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    .verify h2 { margin:0 0 4px; font-size:13px; }
+    .check { display:flex; gap:6px; align-items:center; font-size:12px;
+      color:var(--muted); margin-top:4px; }
+    .pill { font-family: ui-monospace, monospace; font-size:11px;
+      padding:2px 8px; border-radius:999px; background:var(--btn); color:var(--btn-fg); }
+    .pill.ok   { background:#10b98122; color:var(--good); }
+    .pill.bad  { background:#ef444422; color:#ef4444; }
+    .pill.warn { background:#f59e0b22; color:var(--warn); }
+    .log { margin-top:10px; color:var(--muted); font-size:11px;
+      font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Internal-only counter</h1>
+    <p><code>bump_counter</code> is registered with <code>_meta.ui.visibility: ["app"]</code>.
+       The widget can call it; the model cannot list or call it.</p>
+    <div class="display" id="value">0</div>
+    <div class="row">
+      <button id="bump" class="primary">+1 (calls bump_counter)</button>
+      <button id="reset">Reset</button>
+    </div>
+
+    <div class="verify">
+      <h2>Visibility self-check</h2>
+      <p>Asks the host for the model-visible tool list. The internal tool should be hidden.</p>
+      <div class="check">
+        <span class="pill" id="public-pill">…</span>
+        <span id="public-msg">checking <code>show_internal_counter</code> is listed</span>
+      </div>
+      <div class="check">
+        <span class="pill" id="hidden-pill">…</span>
+        <span id="hidden-msg">checking <code>bump_counter</code> is hidden</span>
+      </div>
+      <div class="log" id="log">log: ready</div>
+    </div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const display = document.getElementById('value');
+  const log = document.getElementById('log');
+  const publicPill  = document.getElementById('public-pill');
+  const publicMsg   = document.getElementById('public-msg');
+  const hiddenPill  = document.getElementById('hidden-pill');
+  const hiddenMsg   = document.getElementById('hidden-msg');
+
+  let value = 0;
+  function set(v) { value = v; display.textContent = String(v); }
+
+  const app = new App({ name: "internal-counter-widget", version: "1.0.0" });
+
+  document.getElementById('bump').addEventListener('click', async () => {
+    try {
+      const result = await app.callServerTool({
+        name: "bump_counter",
+        arguments: { by: 1 },
+      });
+      // The tool returns the new value via structuredContent or text.
+      let next = value + 1;
+      const sc = result?.structuredContent;
+      if (sc && typeof sc.value === "number") next = sc.value;
+      set(next);
+      log.textContent = 'log: bump_counter ok → ' + next;
+    } catch (err) {
+      log.textContent = 'bump_counter error: ' + (err?.message || err);
+    }
+  });
+
+  document.getElementById('reset').addEventListener('click', () => set(0));
+
+  async function runVisibilityCheck() {
+    // The SDK exposes listServerResources but not listServerTools directly.
+    // The host generally exposes the model-visible tool catalogue via a
+    // proxied tools/list — try via the lower-level request channel.
+    let names = null;
+    try {
+      // App._client is private; use the documented capability if present.
+      // Most hosts implement tools/list as a pass-through; if not, we degrade.
+      const proxy = app.proxy || app._client || null;
+      if (proxy && typeof proxy.request === "function") {
+        const res = await proxy.request({ method: "tools/list" }, undefined);
+        names = (res?.tools || []).map(t => t.name);
+      }
+    } catch (err) {
+      log.textContent = 'tools/list unavailable: ' + (err?.message || err);
+    }
+
+    if (!names) {
+      publicPill.className = 'pill warn'; publicPill.textContent = 'skip';
+      hiddenPill.className = 'pill warn'; hiddenPill.textContent = 'skip';
+      publicMsg.textContent = 'host did not expose tools/list to the widget';
+      hiddenMsg.textContent = 'verify manually: ask the model to call bump_counter — it should refuse';
+      return;
+    }
+
+    const hasPublic = names.includes('show_internal_counter');
+    const hasHidden = names.includes('bump_counter');
+
+    publicPill.className = hasPublic ? 'pill ok' : 'pill bad';
+    publicPill.textContent = hasPublic ? 'pass' : 'fail';
+    publicMsg.textContent = hasPublic
+      ? 'show_internal_counter is in the model-visible list'
+      : 'show_internal_counter MISSING from model-visible list';
+
+    hiddenPill.className = hasHidden ? 'pill bad' : 'pill ok';
+    hiddenPill.textContent = hasHidden ? 'fail' : 'pass';
+    hiddenMsg.textContent = hasHidden
+      ? 'bump_counter LEAKED to the model'
+      : 'bump_counter is hidden from the model — visibility scoping works';
+  }
+
+  app.connect().then(runVisibilityCheck);
+</script>
+</body>
+</html>

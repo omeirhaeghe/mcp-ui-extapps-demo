@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>One-Shot Survey — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .card { margin:16px; padding:18px 22px; background:var(--card);
+      border:1px solid var(--border); border-radius:10px; }
+    h1 { margin:0 0 4px; font-size:16px; }
+    p { margin:0; color:var(--muted); font-size:13px; }
+    .choices { display:flex; gap:10px; margin:18px 0 8px; }
+    .choice { flex:1; padding:14px; background:var(--bg);
+      border:1px solid var(--border); border-radius:8px;
+      text-align:center; cursor:pointer; font-size:24px;
+      transition: transform .08s ease, border-color .12s ease; }
+    .choice:hover { transform:translateY(-1px); border-color:var(--accent); }
+    .choice.selected { border-color:var(--accent); background:var(--accent); color:#fff; }
+    .label { font-size:11px; color:var(--muted); margin-top:4px; }
+    .choice.selected .label { color:#fff; opacity:.9; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:6px;
+      padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .log { margin-top:12px; padding-top:12px; border-top:1px solid var(--border);
+      color:var(--muted); font-size:11px; font-family: ui-monospace, monospace; }
+    .done { padding:12px 14px; background:#10b98114; color:#10b981;
+      border:1px solid #10b98140; border-radius:8px; font-size:13px; }
+    .torn { color:#ef4444; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>One-Shot Survey</h1>
+    <p>Pick a thumb. After submit, this widget asks the host to tear it down.</p>
+    <div class="choices" id="choices">
+      <div class="choice" data-value="up"><div>👍</div><div class="label">helpful</div></div>
+      <div class="choice" data-value="down"><div>👎</div><div class="label">not for me</div></div>
+    </div>
+    <button id="submit" disabled>Submit & dismiss</button>
+    <div class="log" id="log">log: ready</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const card     = document.getElementById('card');
+  const choices  = document.getElementById('choices');
+  const submit   = document.getElementById('submit');
+  const log      = document.getElementById('log');
+  let value = null;
+
+  // Fake "subscription" we'll need to clean up on teardown.
+  const tickHandle = setInterval(() => { /* would be e.g. polling */ }, 5000);
+  let cleanedUp = false;
+  function cleanup(reason) {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    clearInterval(tickHandle);
+    log.classList.add('torn');
+    log.textContent = 'log: cleaned up (' + reason + ')';
+  }
+
+  choices.addEventListener('click', (e) => {
+    const el = e.target.closest('.choice');
+    if (!el) return;
+    value = el.dataset.value;
+    [...choices.children].forEach(c => c.classList.toggle('selected', c === el));
+    submit.disabled = false;
+  });
+
+  const app = new App({ name: "one-shot-widget", version: "1.0.0" });
+
+  // host → view: the host is about to remove the widget; clean up.
+  app.onteardown = (params) => {
+    cleanup('onteardown reason=' + (params?.reason || 'unspecified'));
+    return {};
+  };
+
+  submit.addEventListener('click', async () => {
+    if (!value) return;
+    submit.disabled = true;
+    try {
+      await app.callServerTool({ name: "submit_survey", arguments: { vote: value } });
+    } catch (err) {
+      log.textContent = 'submit_survey error: ' + (err?.message || err);
+      return;
+    }
+    card.innerHTML = '<div class="done">Thanks — dismissing in 1s.</div>';
+    setTimeout(async () => {
+      cleanup('self-dismiss');
+      try {
+        // view → host: please remove me.
+        await app.requestTeardown({ reason: "user-completed" });
+      } catch (err) {
+        // Some hosts may not support it; that's ok — the widget already shows "done".
+      }
+    }, 1000);
+  });
+
+  app.connect();
+</script>
+</body>
+</html>

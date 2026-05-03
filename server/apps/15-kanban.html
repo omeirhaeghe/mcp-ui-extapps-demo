@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Kanban — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
+      --col-bg:#eef0f3; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb;
+      --col-bg:#13151a; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .wrap { margin:14px; background:var(--card); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden; }
+    .header { padding:12px 14px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:10px; }
+    .title { font-size:14px; font-weight:600; flex:1; }
+    .hint { font-size:11px; color:var(--muted); margin-top:2px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:5px;
+      padding:6px 12px; font-size:12px; cursor:pointer; font-family: inherit; }
+    button.ghost { background: var(--bg); color: var(--fg); border:1px solid var(--border); }
+    .board { padding:12px; display:grid; gap:10px; }
+    .board.inline   { grid-template-columns: 1fr; }
+    .board.fullscreen { grid-template-columns: repeat(3, 1fr); }
+    .col { background:var(--col-bg); border:1px solid var(--border);
+      border-radius:8px; padding:10px; min-height:120px; }
+    .col h3 { margin:0 0 8px; font-size:12px; text-transform:uppercase;
+      letter-spacing:.04em; color:var(--muted); }
+    .card-item { background:var(--bg); border:1px solid var(--border);
+      border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:13px; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px;
+      background:var(--btn); color:var(--btn-fg); font-size:11px; }
+    .footer { padding:10px 14px; border-top:1px solid var(--border);
+      color:var(--muted); font-size:11px; font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div style="flex:1">
+        <div class="title">Kanban <span class="badge" id="mode-badge">inline</span></div>
+        <div class="hint">In <code>inline</code>, columns stack. In <code>fullscreen</code>, they sit side-by-side.</div>
+      </div>
+      <button id="toggle">Maximize ⤢</button>
+    </div>
+    <div class="board inline" id="board">
+      <div class="col"><h3>Todo</h3>
+        <div class="card-item">Read the SEP spec</div>
+        <div class="card-item">Write a widget</div>
+        <div class="card-item">Test in a real host</div>
+      </div>
+      <div class="col"><h3>Doing</h3>
+        <div class="card-item">Wire up <code>requestDisplayMode</code></div>
+      </div>
+      <div class="col"><h3>Done</h3>
+        <div class="card-item">Bootstrap iframe</div>
+        <div class="card-item">Receive tool input</div>
+      </div>
+    </div>
+    <div class="footer" id="log">log: ready</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const board  = document.getElementById('board');
+  const badge  = document.getElementById('mode-badge');
+  const toggle = document.getElementById('toggle');
+  const log    = document.getElementById('log');
+
+  let currentMode = 'inline';
+
+  function applyMode(mode) {
+    currentMode = mode;
+    board.classList.remove('inline', 'fullscreen');
+    board.classList.add(mode);
+    badge.textContent = mode;
+    toggle.textContent = mode === 'fullscreen' ? 'Restore ⤡' : 'Maximize ⤢';
+    log.textContent = 'log: displayMode=' + mode;
+  }
+
+  const app = new App(
+    { name: "kanban-widget", version: "1.0.0" },
+    { availableDisplayModes: ["inline", "fullscreen"] }
+  );
+
+  toggle.addEventListener('click', async () => {
+    const next = currentMode === 'fullscreen' ? 'inline' : 'fullscreen';
+    try {
+      const result = await app.requestDisplayMode({ mode: next });
+      applyMode(result?.mode || next);
+    } catch (err) {
+      log.textContent = 'requestDisplayMode error: ' + (err?.message || err);
+    }
+  });
+
+  app.onhostcontextchanged = (params) => {
+    const mode = params?.hostContext?.displayMode;
+    if (mode && mode !== currentMode) applyMode(mode);
+  };
+
+  app.connect().then(() => {
+    const ctx = app.getHostContext();
+    if (ctx?.displayMode) applyMode(ctx.displayMode);
+  });
+</script>
+</body>
+</html>

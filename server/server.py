@@ -623,6 +623,119 @@ async def record_florida_score(crossings: int, deaths: int) -> str:
     return f"Florida Man recorded: {crossings} crossings, {deaths} deaths."
 
 
+# ---------------------------------------------------------------------------
+# 15. Kanban — display modes (inline / fullscreen) + host-context-changed.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://kanban",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def kanban_app() -> str:
+    return _load_app("15-kanban.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://kanban"}})
+async def show_kanban() -> str:
+    """Render a kanban board that toggles between inline and fullscreen."""
+    return "Kanban rendered. Click Maximize to switch display modes."
+
+
+# ---------------------------------------------------------------------------
+# 16. Themed swatches — reads styles.variables, re-renders on theme change.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://themed-swatches",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def themed_swatches_app() -> str:
+    return _load_app("16-themed-swatches.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://themed-swatches"}})
+async def show_themed_swatches() -> str:
+    """Render a swatch grid built from the host's CSS design tokens."""
+    return "Theme inspector rendered. Toggle the host's theme to see live updates."
+
+
+# ---------------------------------------------------------------------------
+# 17. Signature — native ui/download-file (no callback round-trip).
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://signature",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def signature_app() -> str:
+    return _load_app("17-signature.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://signature"}})
+async def show_signature() -> str:
+    """Render a signature pad that downloads its PNG via ui/download-file."""
+    return "Signature pad rendered. Sign, then click Download PNG."
+
+
+# ---------------------------------------------------------------------------
+# 18. One-shot survey — view→host requestTeardown + host→view onteardown.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://one-shot",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def one_shot_app() -> str:
+    return _load_app("18-one-shot.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://one-shot"}})
+async def show_one_shot() -> str:
+    """Render a one-question survey that asks the host to remove it on submit."""
+    return "Survey rendered. After submit, the widget will request teardown."
+
+
+@mcp.tool()
+async def submit_survey(vote: str) -> str:
+    """Receive the survey vote from the show_one_shot widget."""
+    return f"Recorded vote: {vote}"
+
+
+# ---------------------------------------------------------------------------
+# 19. Internal counter — `bump_counter` is _meta.ui.visibility=["app"]:
+# the widget can call it, the model cannot list or call it.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://internal-counter",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def internal_counter_app() -> str:
+    return _load_app("19-internal-counter.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://internal-counter"}})
+async def show_internal_counter() -> str:
+    """Render a counter whose +1 button uses an app-only callback tool."""
+    return "Internal counter rendered. The bump_counter tool is hidden from the model."
+
+
+_internal_counter_value = 0
+
+
+@mcp.tool(meta={"ui": {"visibility": ["app"]}})
+async def bump_counter(by: int = 1) -> dict:
+    """App-only: increment the counter. Hidden from the model via visibility=['app']."""
+    global _internal_counter_value
+    _internal_counter_value += int(by)
+    return {"value": _internal_counter_value}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))

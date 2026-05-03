@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Themed Swatches — MCP App</title>
+  <style>
+    html,body { margin:0; padding:0;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #fff);
+      font: var(--font-text-md-size, 14px) / var(--font-text-md-line-height, 1.4)
+            var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif); }
+    .wrap { margin:14px;
+      background: var(--color-background-secondary, #f7f7f8);
+      border: var(--border-width-regular, 1px) solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 10px);
+      padding:16px; }
+    h1 { margin:0 0 4px; font-size: var(--font-heading-md-size, 16px);
+      font-weight: var(--font-weight-semibold, 600); }
+    p.hint { margin:0 0 16px; color: var(--color-text-secondary, #6b7280);
+      font-size: var(--font-text-sm-size, 12px); }
+    .meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;
+      font-size:11px; color: var(--color-text-secondary, #6b7280);
+      font-family: var(--font-mono, ui-monospace, monospace); }
+    .meta span { padding:3px 8px;
+      background: var(--color-background-tertiary, #eef0f3);
+      border-radius: var(--border-radius-full, 999px); }
+    .grid { display:grid; gap:8px;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .swatch { border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-sm, 6px); overflow:hidden;
+      background: var(--color-background-primary, #fff); }
+    .swatch .chip { height:36px; }
+    .swatch .label { padding:6px 8px; font-size:10px;
+      font-family: var(--font-mono, ui-monospace, monospace);
+      color: var(--color-text-secondary, #6b7280);
+      word-break: break-all; }
+    .section-title { margin:16px 0 6px; font-size:11px; text-transform:uppercase;
+      letter-spacing:.06em; color: var(--color-text-tertiary, #9ca3af); }
+    .footer { margin-top:14px; padding-top:12px;
+      border-top: 1px solid var(--color-border-primary, #e5e7eb);
+      color: var(--color-text-tertiary, #9ca3af); font-size:11px;
+      font-family: var(--font-mono, ui-monospace, monospace); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Theme inspector</h1>
+    <p class="hint">Reads <code>styles.variables</code> from the host context and paints chips.
+       Toggle the host's light/dark theme — this should re-render via <code>host-context-changed</code>.</p>
+    <div class="meta">
+      <span id="meta-theme">theme: ?</span>
+      <span id="meta-platform">platform: ?</span>
+      <span id="meta-locale">locale: ?</span>
+      <span id="meta-tz">tz: ?</span>
+      <span id="meta-mode">mode: ?</span>
+    </div>
+
+    <div class="section-title">Background</div>
+    <div class="grid" id="grid-bg"></div>
+    <div class="section-title">Text</div>
+    <div class="grid" id="grid-text"></div>
+    <div class="section-title">Border</div>
+    <div class="grid" id="grid-border"></div>
+    <div class="section-title">Other</div>
+    <div class="grid" id="grid-other"></div>
+
+    <div class="footer" id="log">log: waiting for host context…</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const log = document.getElementById('log');
+
+  function paintChip(varName, role) {
+    const div = document.createElement('div');
+    div.className = 'swatch';
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    if (role === 'bg' || role === 'other') {
+      chip.style.background = `var(${varName})`;
+    } else if (role === 'text') {
+      chip.style.background = 'var(--color-background-primary, #fff)';
+      chip.style.color = `var(${varName})`;
+      chip.style.display = 'flex';
+      chip.style.alignItems = 'center';
+      chip.style.justifyContent = 'center';
+      chip.style.fontWeight = '600';
+      chip.textContent = 'Aa';
+    } else if (role === 'border') {
+      chip.style.background = 'var(--color-background-primary, #fff)';
+      chip.style.borderTop = `3px solid var(${varName})`;
+      chip.style.borderBottom = `3px solid var(${varName})`;
+    }
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = varName;
+    div.appendChild(chip);
+    div.appendChild(label);
+    return div;
+  }
+
+  function render(ctx) {
+    const vars = ctx?.styles?.variables || {};
+    const names = Object.keys(vars);
+
+    document.getElementById('meta-theme').textContent    = 'theme: '    + (ctx?.theme || '?');
+    document.getElementById('meta-platform').textContent = 'platform: ' + (ctx?.platform || '?');
+    document.getElementById('meta-locale').textContent   = 'locale: '   + (ctx?.locale || '?');
+    document.getElementById('meta-tz').textContent       = 'tz: '       + (ctx?.timeZone || '?');
+    document.getElementById('meta-mode').textContent     = 'mode: '     + (ctx?.displayMode || '?');
+
+    // Inject all received variables onto :root so var(--name) works in CSS.
+    const root = document.documentElement;
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+
+    function fill(id, role, filter) {
+      const grid = document.getElementById(id);
+      grid.innerHTML = '';
+      const matched = names.filter(filter);
+      if (!matched.length) {
+        const empty = document.createElement('div');
+        empty.style.color = 'var(--color-text-tertiary, #9ca3af)';
+        empty.style.fontSize = '11px';
+        empty.textContent = '(host did not send any matching variables)';
+        grid.appendChild(empty);
+        return;
+      }
+      matched.sort().forEach(n => grid.appendChild(paintChip(n, role)));
+    }
+
+    fill('grid-bg',     'bg',     n => n.startsWith('--color-background-'));
+    fill('grid-text',   'text',   n => n.startsWith('--color-text-'));
+    fill('grid-border', 'border', n => n.startsWith('--color-border-'));
+    fill('grid-other',  'other',  n => n.startsWith('--color-') &&
+                                       !n.startsWith('--color-background-') &&
+                                       !n.startsWith('--color-text-') &&
+                                       !n.startsWith('--color-border-'));
+
+    log.textContent = 'log: rendered ' + names.length + ' variables';
+  }
+
+  const app = new App({ name: "themed-swatches-widget", version: "1.0.0" });
+
+  app.onhostcontextchanged = (params) => {
+    render(params?.hostContext);
+  };
+
+  app.connect().then(() => {
+    render(app.getHostContext());
+  });
+</script>
+</body>
+</html>

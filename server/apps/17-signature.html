@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Signature — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
+      --pad:#ffffff; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb;
+      --pad:#f5f5f5; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .wrap { margin:14px; background:var(--card); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden; }
+    .header { padding:12px 14px; border-bottom:1px solid var(--border); }
+    .title { font-size:14px; font-weight:600; }
+    .hint { font-size:11px; color:var(--muted); margin-top:2px; }
+    .pad-wrap { padding:14px; }
+    canvas { display:block; width:100%; height:200px; background:var(--pad);
+      border:1px dashed var(--border); border-radius:6px; cursor:crosshair;
+      touch-action:none; }
+    .toolbar { display:flex; gap:8px; padding:10px 14px;
+      border-top:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+    input[type=text] { flex:1; min-width:160px; padding:6px 10px;
+      background:var(--bg); border:1px solid var(--border); border-radius:5px;
+      color:var(--fg); font-family:inherit; font-size:12px; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:5px;
+      padding:6px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+    button.ghost { background:var(--bg); color:var(--fg); border:1px solid var(--border); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .status { padding: 0 14px 12px; color:var(--muted); font-size:11px;
+      font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">Signature</div>
+      <div class="hint">Sign below, then download as PNG via <code>ui/download-file</code>.</div>
+    </div>
+    <div class="pad-wrap"><canvas id="pad" width="800" height="200"></canvas></div>
+    <div class="toolbar">
+      <input id="filename" type="text" value="signature.png" maxlength="80">
+      <button id="clear" class="ghost">Clear</button>
+      <button id="download" disabled>Download PNG</button>
+    </div>
+    <div class="status" id="status">Ready.</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const canvas   = document.getElementById('pad');
+  const status   = document.getElementById('status');
+  const dlBtn    = document.getElementById('download');
+  const clearBtn = document.getElementById('clear');
+  const fnInput  = document.getElementById('filename');
+  const ctx      = canvas.getContext('2d');
+
+  let drawing = false, dirty = false, last = null;
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * ratio || canvas.height !== h * ratio) {
+      const data = (canvas.width && canvas.height)
+        ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+      canvas.width = w * ratio;
+      canvas.height = h * ratio;
+      ctx.scale(ratio, ratio);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#111';
+      if (data) ctx.putImageData(data, 0, 0);
+    }
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  }
+  function start(e) { e.preventDefault(); drawing = true; last = pos(e); }
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    last = p;
+    dirty = true;
+    dlBtn.disabled = false;
+  }
+  function end() { drawing = false; last = null; }
+
+  canvas.addEventListener('pointerdown', start);
+  canvas.addEventListener('pointermove', move);
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointerleave', end);
+
+  clearBtn.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    dirty = false;
+    dlBtn.disabled = true;
+    status.textContent = 'Cleared.';
+  });
+
+  function dataUrlToBase64(dataUrl) {
+    const i = dataUrl.indexOf(',');
+    return i === -1 ? '' : dataUrl.slice(i + 1);
+  }
+
+  const app = new App({ name: "signature-widget", version: "1.0.0" });
+
+  dlBtn.addEventListener('click', async () => {
+    if (!dirty) return;
+    const filename = (fnInput.value || 'signature.png').trim();
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob = dataUrlToBase64(dataUrl);
+    const uri = 'ui-blob://signature/' + encodeURIComponent(filename);
+    try {
+      const result = await app.downloadFile({
+        contents: [{
+          type: "resource",
+          resource: { uri, mimeType: "image/png", blob, name: filename },
+        }],
+      });
+      status.textContent = result?.isError
+        ? 'Download error / cancelled.'
+        : 'Downloaded "' + filename + '" (' + blob.length.toLocaleString() + ' base64 bytes).';
+    } catch (err) {
+      status.textContent = 'downloadFile error: ' + (err?.message || err);
+    }
+  });
+
+  app.connect();
+</script>
+</body>
+</html>
