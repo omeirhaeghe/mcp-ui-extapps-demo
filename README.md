@@ -57,6 +57,84 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 
 ---
 
+## Spec coverage analysis
+
+> **TL;DR** — All 19 are spec-compliant, but several test the same SEP-1865
+> surface from a different angle. If your goal is *minimum-redundant*
+> coverage of the spec (rather than a varied gallery), the breakdown below
+> shows which widgets you can drop without losing any surface.
+
+<details>
+<summary><b>Which widgets test which spec surface</b> (click to expand)</summary>
+
+#### Surfaces tested by exactly one widget — keep all of these
+
+| Spec surface | Tested by |
+|---|---|
+| `text/html;profile=mcp-app` + `_meta.ui.resourceUri` + `ui/initialize` (bare-minimum static render) | #1 `show_hello` |
+| `ui/notifications/size-changed` (auto-resize) | #2 `show_counter` |
+| `ui/message` (post user message into chat) | #3 `show_feedback` |
+| `tools/call` with `outputSchema` / `structuredContent` | #6 `show_tictactoe` |
+| Large-payload `tools/call` (message-channel size limits) | #7 `show_drawing` |
+| Same `_meta.ui.resourceUri` shared by multiple tools (the second tool *updates* the existing widget) | #12 `show_adventure` |
+| `availableDisplayModes` + `ui/request-display-mode` + `host-context-changed` (`displayMode` field) | #15 `show_kanban` |
+| `host-context-changed` reactivity over `styles.variables.*` (theme tokens) | #16 `show_themed_swatches` |
+| `ui/download-file` with embedded blob | #17 `show_signature` |
+| `ui/notifications/request-teardown` + `ui/resource-teardown` | #18 `show_one_shot` |
+| `_meta.ui.visibility: ["app"]` (model-hidden tool) | #19 `show_internal_counter` |
+
+#### Surfaces tested by multiple widgets
+
+| Spec surface | Tested by | Verdict |
+|---|---|---|
+| `tools/call` (host→app proxy) | #3, #5, #6, #7, #8, #11, #12, #14, #18, #19 | most fully redundant; #6 (`outputSchema`) and #7 (large payload) add real angles |
+| `_meta.ui.csp.resourceDomains` (CSP `script-src`) | #4 (Chart.js), #5 (Leaflet), #10 (three.js) | #10 adds nothing #4/#5 don't already prove |
+| `_meta.ui.csp.connectDomains` (CSP `connect-src`) | #4 (CoinGecko), #9 (Open-Meteo) | one external API is enough |
+| `ui/open-link` | #4, #5 | minor overlap |
+| `host-context-changed` | #15 (`displayMode`), #16 (`theme` + `styles.variables`) | **soft** — different fields; hosts often propagate one and not the other, so both stay useful |
+| Cross-origin `<img>` loading inside the sandbox | #5 (OSM tiles), #4 (Chart.js fonts) | **soft** — distinct CSP directive (`img-src`) |
+| Canvas + `requestAnimationFrame` inside the sandbox | #11, #14 | not a spec surface (gated by `allow-scripts`); pick one |
+
+#### Drop candidates (spec-redundant)
+
+| # | Widget | Why redundant |
+|---|---|---|
+| 8  | `show_todos`        | Adds no new spec surface — just more `tools/call`s. Already covered by #3, #5, #6 |
+| 9  | `show_weather`      | Same `csp.connectDomains` story as #4, just a different API host |
+| 10 | `show_3d`           | Same `csp.resourceDomains` story as #4/#5; WebGL itself isn't a spec surface |
+| 11 | `show_punch_monkey` | Spec-wise = #3 (`tools/call`); "high-frequency state" is not a host-side surface |
+| 13 | `show_hover`        | Pointer events propagating to a sandboxed iframe isn't a distinct spec surface — `allow-scripts` covers it |
+| 14 | `show_florida_man`  | Same as #11 spec-wise; keyboard delivery isn't a separate spec surface |
+
+> Keep one of {#11, #14} if you want a representative "stresses local
+> state + late callback" demo. The others can go without losing any
+> spec coverage.
+
+#### Minimal complete-coverage set (13 widgets)
+
+If you cut hard: **#1, #2, #3, #4, #5, #6, #7, #12, #15, #16, #17, #18, #19**
+(plus optionally one of #11/#14). That hits every SEP-1865 surface this
+repo currently exercises, with no two widgets covering the same surface.
+
+#### Surfaces still uncovered (no widget tests these)
+
+Pruning won't fix these — only adding new widgets will:
+
+- `_meta.ui.csp.frameDomains` (cross-origin nested iframe, e.g. embedded YouTube)
+- `_meta.ui.csp.baseUriDomains`
+- `_meta.ui.permissions.{camera, microphone, geolocation, clipboardWrite}`
+- `_meta.ui.domain` (custom origin)
+- `ui/update-model-context` (view→host)
+- `pip` display mode (only `inline` / `fullscreen` are exercised in #15)
+- `ui/notifications/tool-input-partial` / `tool-cancelled`
+- `notifications/tools/list_changed` / `resources/list_changed`
+- `sampling` host capability (`createSamplingMessage`)
+- `containerDimensions`, `safeAreaInsets`, `deviceCapabilities` from `HostContext`
+
+</details>
+
+---
+
 ## Quick deploy on Render
 
 1. Click the **Deploy to Render** button above (or fork → connect in Render).
