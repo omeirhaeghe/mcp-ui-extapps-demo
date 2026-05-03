@@ -22,6 +22,12 @@ should make every checkbox below pass without modification.
 - [ ] `ui/download-file` (with embedded blob) — app #17
 - [ ] `ui/notifications/request-teardown` — app #18
 
+**Resource `_meta.ui.csp` (CSP propagation)**
+
+- [ ] `csp.resourceDomains` (CSP `script-src` / `img-src`) — apps #4, #5
+- [ ] `csp.connectDomains` (CSP `connect-src`) — app #4
+- [ ] `csp.frameDomains` (CSP `frame-src`) — app #20
+
 **postMessage actions (host → widget)**
 
 - [ ] `ui/notifications/host-context-changed` — apps #15, #16
@@ -29,7 +35,7 @@ should make every checkbox below pass without modification.
 
 **_meta surfaces on tools**
 
-- [ ] `_meta.ui.resourceUri` on every widget-emitting tool — apps #1-19
+- [ ] `_meta.ui.resourceUri` on every widget-emitting tool — apps #1-20
 - [ ] `_meta.ui.visibility: ["app"]` (tool hidden from model) — `bump_counter` for app #19
 
 **App capabilities advertised by widgets**
@@ -191,6 +197,29 @@ takes no model-meaningful arguments and only makes sense from inside the
 widget. (The self-check tries `tools/list` over the iframe channel; some
 hosts don't expose it, in which case the pills show `skip` and the user
 must verify manually.)
+
+### 20. `show_url` — Generic URL-as-MCP-app wrapper
+
+- [ ] Widget renders with the supplied `url` in the address bar and an
+      iframe attempting to load it
+- [ ] Default URL (`https://example.com`) loads cleanly — badge turns
+      green and reads `framed`
+- [ ] Clicking a URL pill (e.g. "OSM embed", "YT embed") loads that URL
+- [ ] Pasting a URL whose origin is **not** in the resource's
+      `_meta.ui.csp.frameDomains` fails with a CSP block — badge turns
+      red and reads `blocked`; overlay says "Origin not in frameDomains"
+- [ ] Loading an in-allowlist URL whose target sets
+      `X-Frame-Options: DENY` fails differently — badge reads
+      `X-Frame-Options?` after a ~4.5s timeout; overlay says "The target
+      site refused framing"
+- [ ] Clicking "Open ↗" invokes `ui/open-link` for the current URL
+- [ ] Reload re-attempts the load
+
+**What this tests:** `_meta.ui.csp.frameDomains` propagation. The host
+must include allowlisted origins in its iframe's `frame-src` directive,
+otherwise CSP will block the nested iframe even before the target site's
+own framing policy is checked. Hosts that ignore `frameDomains` will
+make every framing attempt fail with the CSP block, even for example.com.
 
 ## Round-trip verification
 

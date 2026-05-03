@@ -736,6 +736,52 @@ async def bump_counter(by: int = 1) -> dict:
     return {"value": _internal_counter_value}
 
 
+# ---------------------------------------------------------------------------
+# 20. Embed URL — wraps an arbitrary external URL as an MCP-app via
+# nested iframe. Tests `_meta.ui.csp.frameDomains`.
+#
+# Caveat: `frameDomains` is static at resource-registration time, so the
+# allowlist is fixed. Many sites also set X-Frame-Options: DENY and will
+# refuse framing regardless of the embedder's CSP — the widget surfaces
+# both failure modes distinctly.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://embed-url",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": ["https://cdn.jsdelivr.net"],
+                "frameDomains": [
+                    "https://example.com",
+                    "https://example.org",
+                    "https://www.openstreetmap.org",
+                    "https://www.youtube-nocookie.com",
+                    "https://www.wikipedia.org",
+                    "https://*.github.io",
+                ],
+            },
+        }
+    },
+)
+def embed_url_app() -> str:
+    return _load_app("20-embed-url.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://embed-url"}})
+async def show_url(url: str = "https://example.com") -> str:
+    """Wrap an external URL as an MCP-app via a nested iframe.
+
+    Only origins listed in the resource's `_meta.ui.csp.frameDomains`
+    can be framed; everything else is blocked at the host's CSP layer.
+    Sites that set `X-Frame-Options: DENY` will also refuse framing
+    regardless of CSP — the widget shows both failure modes.
+    """
+    return f"Embedded {url}."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))

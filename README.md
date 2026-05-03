@@ -1,7 +1,7 @@
 # MCP Apps Demo Server
 
 A reference [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) server you
-can deploy in one click — nineteen interactive widgets that exercise every part of
+can deploy in one click — twenty interactive widgets that exercise every part of
 the spec. Use it to test your own MCP host, prototype your own widgets, or play
 with the protocol.
 
@@ -21,7 +21,7 @@ with the protocol.
 
 ## The widgets
 
-All nineteen are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
+All twenty are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
 matching resource is registered with `text/html;profile=mcp-app`, and the
 client-side JS uses the official [`@modelcontextprotocol/ext-apps`](https://www.npmjs.com/package/@modelcontextprotocol/ext-apps) SDK.
 
@@ -49,6 +49,7 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 | 17 | `show_signature`        | Signature pad with native PNG download              | `ui/download-file` with an inline `EmbeddedResource` (`image/png` blob) — no callback round-trip |
 | 18 | `show_one_shot`         | Self-dismissing 1-question survey                   | `ui/notifications/request-teardown` (view→host) + `ui/resource-teardown` (host→view) cleanup hook |
 | 19 | `show_internal_counter` | Counter with model-hidden +1 callback               | `_meta.ui.visibility: ["app"]` — `bump_counter` is callable from the iframe but absent from the model's `tools/list` |
+| 20 | `show_url`              | Wraps an arbitrary URL as an MCP-app via nested iframe | `_meta.ui.csp.frameDomains` (CSP `frame-src`) — surfaces both CSP-block and `X-Frame-Options: DENY` failure modes |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
@@ -59,7 +60,7 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 
 ## Spec coverage analysis
 
-> **TL;DR** — All 19 are spec-compliant, but several test the same SEP-1865
+> **TL;DR** — All 20 are spec-compliant, but several test the same SEP-1865
 > surface from a different angle. If your goal is *minimum-redundant*
 > coverage of the spec (rather than a varied gallery), the breakdown below
 > shows which widgets you can drop without losing any surface.
@@ -82,6 +83,7 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 | `ui/download-file` with embedded blob | #17 `show_signature` |
 | `ui/notifications/request-teardown` + `ui/resource-teardown` | #18 `show_one_shot` |
 | `_meta.ui.visibility: ["app"]` (model-hidden tool) | #19 `show_internal_counter` |
+| `_meta.ui.csp.frameDomains` (CSP `frame-src` for nested iframes) | #20 `show_url` |
 
 #### Surfaces tested by multiple widgets
 
@@ -112,7 +114,7 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 
 #### Minimal complete-coverage set (13 widgets)
 
-If you cut hard: **#1, #2, #3, #4, #5, #6, #7, #12, #15, #16, #17, #18, #19**
+If you cut hard: **#1, #2, #3, #4, #5, #6, #7, #12, #15, #16, #17, #18, #19, #20**
 (plus optionally one of #11/#14). That hits every SEP-1865 surface this
 repo currently exercises, with no two widgets covering the same surface.
 
@@ -120,7 +122,6 @@ repo currently exercises, with no two widgets covering the same surface.
 
 Pruning won't fix these — only adding new widgets will:
 
-- `_meta.ui.csp.frameDomains` (cross-origin nested iframe, e.g. embedded YouTube)
 - `_meta.ui.csp.baseUriDomains`
 - `_meta.ui.permissions.{camera, microphone, geolocation, clipboardWrite}`
 - `_meta.ui.domain` (custom origin)
@@ -203,8 +204,8 @@ declares `_meta.ui.resourceUri` so spec-aware hosts know to render the widget.
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  This server (Python, FastMCP)                                   │
-│  ─ 19 ui://… resources, mime "text/html;profile=mcp-app"         │
-│  ─ 19 widget-emitting tools with _meta.ui.resourceUri            │
+│  ─ 20 ui://… resources, mime "text/html;profile=mcp-app"         │
+│  ─ 20 widget-emitting tools with _meta.ui.resourceUri            │
 │  ─ N callback tools (save_pin, make_move, save_drawing, …)       │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -214,7 +215,7 @@ declares `_meta.ui.resourceUri` so spec-aware hosts know to render the widget.
 ```
 .
 ├── server/
-│   ├── server.py          FastMCP server, 19 widgets + callbacks
+│   ├── server.py          FastMCP server, 20 widgets + callbacks
 │   └── apps/              Self-contained widget HTML (one file each)
 ├── render.yaml            Render blueprint (one-click deploy)
 ├── pyproject.toml         uv / pip dependencies
