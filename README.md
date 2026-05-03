@@ -25,27 +25,30 @@ All nineteen are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
 matching resource is registered with `text/html;profile=mcp-app`, and the
 client-side JS uses the official [`@modelcontextprotocol/ext-apps`](https://www.npmjs.com/package/@modelcontextprotocol/ext-apps) SDK.
 
-| # | Tool | What it shows | Spec surface tested |
+Each row names the SEP-1865 surfaces the widget exercises. Brackets give the
+spec section / method ID so you can grep [the spec](https://modelcontextprotocol.io/community/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp).
+
+| # | Tool | What it shows | SEP-1865 surface tested |
 |---|---|---|---|
-| 1 | `show_hello` | Static greeting card | Bare-minimum widget — static HTML, init handshake |
-| 2 | `show_counter` | +1 / −1 buttons, "Grow" panel | JS interactivity + the SDK's `ResizeObserver` auto-resize |
-| 3 | `show_feedback` | Star rating + comments form | `callServerTool` (`submit_feedback`) + `sendMessage` round-trip |
-| 4 | `show_price_chart` | Live BTC/ETH/SOL/DOGE/ADA chart | External CDN script (Chart.js) + cross-origin `fetch` (CoinGecko) |
-| 5 | `show_map` | Click-to-drop-pin map | OSM tiles + Leaflet + `callServerTool` (`save_pin`) + `openLink` |
-| 6 | `show_tictactoe` | Tic-tac-toe vs server-side minimax | Per-move `callServerTool` round-trip with `structuredContent` |
-| 7 | `show_drawing` | Canvas drawing pad with brush + colors | Large-payload `callServerTool` (`save_drawing` with PNG data URL) |
-| 8 | `show_todos` | Todo list with add / toggle / delete | Multiple `callServerTool` round-trips per session |
-| 9 | `show_weather` | Current conditions for any city | Different external API (Open-Meteo, no auth) |
-| 10 | `show_3d` | Rotating 3D cube / sphere / torus / knot | three.js + WebGL via CDN |
-| 11 | `show_punch_monkey` | 15-second clicker mini-game | High-frequency client-side state, end-of-round score callback |
-| 12 | `show_adventure` | Branching Apple-II-style mystery | Picture-in-widget, answers-in-chat — model orchestrates the story |
-| 13 | `show_hover` | Spotlight that follows the cursor over hidden words | Pure-hover interaction — `mousemove` / `mouseenter` / `mouseleave`, no clicks |
-| 14 | `show_florida_man` | Frogger-style crossing dodging golf carts 🤠🛺🐊 | Canvas + `requestAnimationFrame` game loop, keyboard + on-screen D-pad |
-| 15 | `show_kanban` | Kanban board with Maximize button | `availableDisplayModes` + `ui/request-display-mode` + `host-context-changed` |
-| 16 | `show_themed_swatches` | Live grid of host design tokens | `host-context-changed` + `styles.variables.*` reactivity |
-| 17 | `show_signature` | Signature pad with native PNG download | `ui/download-file` (no callback round-trip) |
-| 18 | `show_one_shot` | Self-dismissing 1-question survey | `ui/notifications/request-teardown` + host→view `ui/resource-teardown` |
-| 19 | `show_internal_counter` | Counter with model-hidden +1 callback | `_meta.ui.visibility: ["app"]` (tool exists but is invisible to the model) |
+| 1  | `show_hello`            | Static greeting card                                | `text/html;profile=mcp-app` resource + `_meta.ui.resourceUri` on tool + `ui/initialize` handshake (bare minimum) |
+| 2  | `show_counter`          | +1 / −1 buttons, "Grow" panel                       | `ui/notifications/tool-input` (read tool args) + `ui/notifications/size-changed` (SDK auto-resize) |
+| 3  | `show_feedback`         | Star rating + comments form                         | `tools/call` host→app (`submit_feedback`) + `ui/message` (post user message into chat) |
+| 4  | `show_price_chart`      | Live BTC/ETH/SOL/DOGE/ADA chart                     | `_meta.ui.csp.resourceDomains` (Chart.js CDN) + `_meta.ui.csp.connectDomains` (CoinGecko `fetch`) + `ui/open-link` |
+| 5  | `show_map`              | Click-to-drop-pin map                               | `_meta.ui.csp.resourceDomains` (Leaflet + OSM tile servers) + `tools/call` (`save_pin`) + `ui/open-link` |
+| 6  | `show_tictactoe`        | Tic-tac-toe vs server-side minimax                  | `tools/call` with `outputSchema` / `structuredContent` round-trip per move |
+| 7  | `show_drawing`          | Canvas drawing pad with brush + colors              | Large-payload `tools/call` (PNG data URL via `save_drawing`) — stresses message-channel size limits |
+| 8  | `show_todos`            | Todo list with add / toggle / delete                | Multiple `tools/call` round-trips per session (`add_todo` / `toggle_todo` / `delete_todo`) |
+| 9  | `show_weather`          | Current conditions for any city                     | `_meta.ui.csp.connectDomains` against a second external API (Open-Meteo, no auth) |
+| 10 | `show_3d`               | Rotating 3D cube / sphere / torus / knot            | `_meta.ui.csp.resourceDomains` (three.js CDN) + WebGL inside the sandbox |
+| 11 | `show_punch_monkey`     | 15-second clicker mini-game                         | High-frequency local state, single end-of-round `tools/call` (`record_punch_score`) — verifies the host doesn't drop late callbacks |
+| 12 | `show_adventure`        | Branching Apple-II-style mystery                    | Split UX: scene rendered in widget via `tools/call`, user answers typed into chat → model interprets → next `tools/call` |
+| 13 | `show_hover`            | Spotlight that follows the cursor over hidden words | Pure pointer-event widget — verifies the iframe receives `mousemove`/`mouseenter`/`mouseleave` (no clicks, no callbacks) |
+| 14 | `show_florida_man`      | Frogger-style crossing dodging golf carts 🤠🛺🐊      | Canvas + `requestAnimationFrame` + keyboard input inside the sandbox; end-of-round `tools/call` (`record_florida_score`) |
+| 15 | `show_kanban`           | Kanban board with Maximize button                   | `availableDisplayModes` app capability + `ui/request-display-mode` (view→host) + `ui/notifications/host-context-changed` (host→view) |
+| 16 | `show_themed_swatches`  | Live grid of host design tokens                     | `ui/notifications/host-context-changed` reactivity over `HostContext.styles.variables.*` (CSS design tokens) |
+| 17 | `show_signature`        | Signature pad with native PNG download              | `ui/download-file` with an inline `EmbeddedResource` (`image/png` blob) — no callback round-trip |
+| 18 | `show_one_shot`         | Self-dismissing 1-question survey                   | `ui/notifications/request-teardown` (view→host) + `ui/resource-teardown` (host→view) cleanup hook |
+| 19 | `show_internal_counter` | Counter with model-hidden +1 callback               | `_meta.ui.visibility: ["app"]` — `bump_counter` is callable from the iframe but absent from the model's `tools/list` |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
