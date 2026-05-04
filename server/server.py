@@ -782,6 +782,28 @@ async def show_url(url: str = "https://example.com") -> str:
     return f"Embedded {url}."
 
 
+# ---------------------------------------------------------------------------
+# 21. User profile — view→host ui/update-model-context. Pushes user
+# preferences (name, units, reply style) into the model's context so
+# future turns see them, without going through a tools/call round-trip.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://user-profile",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def user_profile_app() -> str:
+    return _load_app("21-user-profile.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://user-profile"}})
+async def show_user_profile() -> str:
+    """Render a profile form. Submitting it pushes preferences into the
+    model's context via ui/update-model-context (no callback tool)."""
+    return "User profile rendered. Submitting will update the model's context."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
