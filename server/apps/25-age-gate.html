@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Age Gate — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#0f172a; --muted:#64748b; --bg:#ffffff; --card:#ffffff;
+      --border:#e5e7eb; --accent:#0f172a; --good:#16a34a; --bad:#b91c1c;
+      --shadow: 0 8px 28px rgba(15,23,42,.08); --row:#f8fafc; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#e5e7eb; --good:#22c55e; --bad:#f87171;
+      --shadow: 0 12px 36px rgba(0,0,0,.55); --row:#1a1d24; } }
+
+    html, body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+    .card { margin:16px; padding:22px 22px 18px; background: var(--card);
+      border:1px solid var(--border); border-radius:14px; box-shadow: var(--shadow); }
+
+    /* Intentionally neutral. No "must be N+" framing anywhere on the gate. */
+    h1 { margin:0 0 14px; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+
+    .row { display:flex; gap:8px; }
+    .field { display:flex; flex-direction:column; gap:4px; flex:1; }
+    label { color: var(--muted); font-size:11px; text-transform: uppercase; letter-spacing:.05em; }
+    select, .region-pick {
+      padding:10px 12px; background: var(--bg); border:1px solid var(--border);
+      border-radius:8px; color: var(--fg); font: inherit; font-size:13px;
+      appearance:none; -webkit-appearance:none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 14px) calc(50% - 2px), calc(100% - 9px) calc(50% - 2px);
+      background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+      padding-right: 28px; }
+    select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+
+    .region { margin: 14px 0 10px; }
+    .region-row { display:flex; align-items:center; gap:8px; }
+    .region-pick { flex:1; }
+    .region-meta { color: var(--muted); font-size:11px; margin-top:4px; }
+
+    .submit { width:100%; margin-top:14px; padding:11px 12px; border:0; border-radius:10px;
+      cursor:pointer; font: 600 14px inherit; background: var(--accent);
+      color: var(--bg); transition: opacity .2s ease, transform .15s ease; }
+    .submit[disabled] { opacity:.4; cursor:not-allowed; }
+    .submit:not([disabled]):hover { opacity:.92; }
+    .submit:not([disabled]):active { transform: translateY(1px); }
+
+    .legal { color: var(--muted); font-size: 11px; margin-top: 10px; line-height: 1.4; }
+
+    /* Result states ----------------------------------------------------------*/
+    .result { padding: 18px 16px; border-radius:10px; display:flex; gap:14px;
+      align-items:flex-start; animation: rise .25s ease; }
+    @keyframes rise { from { transform: translateY(4px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+    .ic { width:36px; height:36px; flex:0 0 36px; border-radius:999px; display:flex;
+      align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; }
+    .ic.allow { background: var(--good); box-shadow: 0 6px 16px rgba(22,163,74,.30); }
+    .ic.deny  { background: var(--bad);  box-shadow: 0 6px 16px rgba(185,28,28,.30); }
+    .result h2 { margin:0 0 2px; font-size:15px; font-weight:600; }
+    .result p  { margin:0; color: var(--muted); font-size:13px; line-height:1.4; }
+    .final { margin-top:6px; color: var(--muted); font-size:11px; font-style:italic; }
+
+    /* Trace panel ------------------------------------------------------------*/
+    .trace { margin-top: 14px; padding: 12px 14px; background: var(--row);
+      border:1px dashed var(--border); border-radius:10px; font-size:12px; }
+    .trace-h { display:flex; justify-content:space-between; gap:10px; align-items:baseline;
+      margin-bottom:6px; }
+    .trace-h .t-title { font-weight:600; font-size:11px; text-transform: uppercase;
+      letter-spacing:.06em; color: var(--muted); }
+    .trace-h .t-note { color: var(--muted); font-size:10px; font-style:italic; }
+    .trace dl { display:grid; grid-template-columns: max-content 1fr; column-gap: 12px;
+      row-gap: 4px; margin: 0; font-family: ui-monospace, monospace; font-size: 11.5px; }
+    .trace dt { color: var(--muted); }
+    .trace dd { margin: 0; word-break: break-word; }
+    .trace dd.allow { color: var(--good); font-weight:600; }
+    .trace dd.deny  { color: var(--bad);  font-weight:600; }
+
+    .demo-reset { display:block; margin: 14px auto 0; background:none; border:0;
+      color: var(--muted); font-size: 11px; cursor:pointer; text-decoration: underline; }
+
+    .status { color: var(--muted); font-size:11px; margin-top: 10px; min-height: 14px;
+      font-family: ui-monospace, monospace; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <!-- Gate (neutral) ----------------------------------------------------- -->
+    <section id="gate">
+      <h1>Please confirm your date of birth.</h1>
+
+      <div class="row">
+        <div class="field">
+          <label for="m">Month</label>
+          <select id="m"><option value="">—</option></select>
+        </div>
+        <div class="field">
+          <label for="d">Day</label>
+          <select id="d"><option value="">—</option></select>
+        </div>
+        <div class="field">
+          <label for="y">Year</label>
+          <select id="y"><option value="">—</option></select>
+        </div>
+      </div>
+
+      <div class="region">
+        <label for="r">Region</label>
+        <div class="region-row">
+          <select id="r" class="region-pick"></select>
+        </div>
+        <div class="region-meta" id="r-meta">Detected from your browser locale.</div>
+      </div>
+
+      <button class="submit" id="continue" type="button" disabled>Continue</button>
+
+      <p class="legal">
+        We collect this to determine applicable rules in your region. Your date
+        of birth is not stored; only the resulting eligibility decision is
+        recorded.
+      </p>
+    </section>
+
+    <!-- Result ------------------------------------------------------------- -->
+    <section id="result" hidden></section>
+
+    <div class="status" id="status">log: ready</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  // ---------------------------------------------------------------------------
+  // Jurisdiction → digital-consent threshold (years).
+  // Selected to illustrate the spread; not exhaustive. Production code should
+  // pull from a maintained per-jurisdiction config, not hardcoded constants.
+  // ---------------------------------------------------------------------------
+  const JURISDICTIONS = [
+    { code:"US", flag:"🇺🇸", name:"United States",  threshold:13, basis:"COPPA" },
+    { code:"GB", flag:"🇬🇧", name:"United Kingdom", threshold:13, basis:"UK GDPR / PECR" },
+    { code:"IE", flag:"🇮🇪", name:"Ireland",        threshold:16, basis:"GDPR Art. 8 (IE)" },
+    { code:"DE", flag:"🇩🇪", name:"Germany",        threshold:16, basis:"GDPR Art. 8 (DE)" },
+    { code:"NL", flag:"🇳🇱", name:"Netherlands",    threshold:16, basis:"GDPR Art. 8 (NL)" },
+    { code:"FR", flag:"🇫🇷", name:"France",         threshold:15, basis:"GDPR Art. 8 (FR)" },
+    { code:"ES", flag:"🇪🇸", name:"Spain",          threshold:14, basis:"GDPR Art. 8 (ES)" },
+    { code:"IT", flag:"🇮🇹", name:"Italy",          threshold:14, basis:"GDPR Art. 8 (IT)" },
+    { code:"SE", flag:"🇸🇪", name:"Sweden",         threshold:13, basis:"GDPR Art. 8 (SE)" },
+    { code:"BR", flag:"🇧🇷", name:"Brazil",         threshold:18, basis:"LGPD" },
+    { code:"IN", flag:"🇮🇳", name:"India",          threshold:18, basis:"DPDP Act" },
+    { code:"KR", flag:"🇰🇷", name:"South Korea",    threshold:14, basis:"PIPA" },
+    { code:"XX", flag:"🌐", name:"Other",          threshold:16, basis:"Default (strictest reasonable)" },
+  ];
+
+  // Browser locale → jurisdiction code. Falls back to "XX".
+  function detectJurisdiction() {
+    const lang = (navigator.language || "").toUpperCase();
+    const m = lang.match(/-([A-Z]{2})$/);
+    if (m) {
+      const cc = m[1];
+      if (JURISDICTIONS.find(j => j.code === cc)) return cc;
+    }
+    // Timezone heuristic as a fallback.
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      if (tz.startsWith("Europe/")) return "XX";
+      if (tz.startsWith("America/")) return "US";
+      if (tz.startsWith("Asia/Kolkata")) return "IN";
+      if (tz.startsWith("Asia/Seoul")) return "KR";
+      if (tz.startsWith("Asia/Tokyo")) return "XX";
+    } catch {}
+    return "XX";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Persistent decision store. Stores ONLY the derived decision — never DOB.
+  // Per-origin localStorage. Production should mirror this server-side with
+  // device fingerprint + account binding (this is "no retry within session").
+  // ---------------------------------------------------------------------------
+  const STORE_KEY = "mcp-demo:age-gate:v1";
+  const loadDecision = () => {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "null"); }
+    catch { return null; }
+  };
+  const saveDecision = (d) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch {} };
+  const clearDecision = () => { try { localStorage.removeItem(STORE_KEY); } catch {} };
+
+  // ---------------------------------------------------------------------------
+  // Form wiring
+  // ---------------------------------------------------------------------------
+  const MONTHS = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"];
+
+  const mEl = document.getElementById("m");
+  const dEl = document.getElementById("d");
+  const yEl = document.getElementById("y");
+  const rEl = document.getElementById("r");
+  const rMeta = document.getElementById("r-meta");
+  const btn = document.getElementById("continue");
+  const gate = document.getElementById("gate");
+  const resultEl = document.getElementById("result");
+  const status = document.getElementById("status");
+
+  function populateMonths() {
+    MONTHS.forEach((name, i) => {
+      const o = document.createElement("option");
+      o.value = String(i + 1); o.textContent = name;
+      mEl.appendChild(o);
+    });
+  }
+  function populateYears() {
+    const now = new Date().getFullYear();
+    for (let y = now; y >= 1900; y--) {
+      const o = document.createElement("option");
+      o.value = String(y); o.textContent = y;
+      yEl.appendChild(o);
+    }
+  }
+  function populateDays() {
+    // Smart day count based on selected month/year.
+    const month = parseInt(mEl.value, 10);
+    const year = parseInt(yEl.value, 10) || 2000;
+    const prev = dEl.value;
+    dEl.innerHTML = '<option value="">—</option>';
+    const daysIn = month ? new Date(year, month, 0).getDate() : 31;
+    for (let d = 1; d <= daysIn; d++) {
+      const o = document.createElement("option");
+      o.value = String(d); o.textContent = d;
+      dEl.appendChild(o);
+    }
+    if (prev && parseInt(prev, 10) <= daysIn) dEl.value = prev;
+  }
+  function populateRegions() {
+    JURISDICTIONS.forEach(j => {
+      const o = document.createElement("option");
+      o.value = j.code; o.textContent = `${j.flag} ${j.name}`;
+      rEl.appendChild(o);
+    });
+  }
+
+  function ageFromDob(year, month, day) {
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    const m = today.getMonth() + 1;
+    const d = today.getDate();
+    if (m < month || (m === month && d < day)) age -= 1;
+    return age;
+  }
+
+  function setFormValid() {
+    btn.disabled = !(mEl.value && dEl.value && yEl.value && rEl.value);
+  }
+
+  function fmtTs(iso) { return iso.replace("T", " ").replace(/\..+$/, "Z"); }
+
+  // ---------------------------------------------------------------------------
+  // Render: result + trace
+  // ---------------------------------------------------------------------------
+  function renderDecision(decision) {
+    gate.hidden = true;
+    resultEl.hidden = false;
+    const allow = decision.decision === "ALLOW";
+    const j = JURISDICTIONS.find(x => x.code === decision.jurisdiction) ?? JURISDICTIONS.at(-1);
+
+    resultEl.innerHTML = `
+      <div class="result">
+        <div class="ic ${allow ? "allow" : "deny"}">${allow ? "✓" : "🔒"}</div>
+        <div>
+          <h2>${allow ? "You may continue." : "We're unable to continue at this time."}</h2>
+          <p>${allow
+              ? "Thanks — your information has been recorded."
+              : "Access is unavailable based on the information provided."}</p>
+          ${allow ? "" : '<div class="final">This decision is final for this session.</div>'}
+        </div>
+      </div>
+
+      <div class="trace" aria-label="Compliance trace">
+        <div class="trace-h">
+          <span class="t-title">Compliance trace</span>
+          <span class="t-note">In production: server-logged, hidden from the user.</span>
+        </div>
+        <dl>
+          <dt>Jurisdiction</dt><dd>${j.flag} ${j.name} <span style="color:var(--muted)">(${j.code})</span></dd>
+          <dt>Threshold</dt>   <dd>${j.threshold} · <span style="color:var(--muted)">${j.basis}</span></dd>
+          <dt>Age class</dt>   <dd>${decision.age_class}</dd>
+          <dt>Method</dt>      <dd>self-declaration (DOB)</dd>
+          <dt>Decision</dt>    <dd class="${allow ? "allow" : "deny"}">${decision.decision}</dd>
+          <dt>Recorded</dt>    <dd>${fmtTs(decision.timestamp)}</dd>
+        </dl>
+      </div>
+
+      <button class="demo-reset" id="reset" type="button">
+        (Demo only) Reset gate — would not exist in production
+      </button>
+    `;
+    document.getElementById("reset").addEventListener("click", () => {
+      clearDecision();
+      resultEl.hidden = true;
+      gate.hidden = false;
+      mEl.value = ""; dEl.value = ""; yEl.value = "";
+      populateDays(); setFormValid();
+      status.textContent = "log: gate reset (demo)";
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Submit → derive decision → callback (derived facts only, never DOB).
+  // ---------------------------------------------------------------------------
+  async function onSubmit() {
+    const year  = parseInt(yEl.value, 10);
+    const month = parseInt(mEl.value, 10);
+    const day   = parseInt(dEl.value, 10);
+    const code  = rEl.value;
+
+    const age = ageFromDob(year, month, day);
+    if (!Number.isFinite(age) || age < 0 || age > 150) {
+      status.textContent = "log: invalid DOB";
+      return;
+    }
+
+    const jur = JURISDICTIONS.find(j => j.code === code) ?? JURISDICTIONS.at(-1);
+    const meets = age >= jur.threshold;
+    const decision = {
+      decision: meets ? "ALLOW" : "DENY",
+      jurisdiction: jur.code,
+      threshold: jur.threshold,
+      age_class: meets ? "meets_threshold" : "under_threshold",
+      timestamp: new Date().toISOString(),
+    };
+    saveDecision(decision);
+    renderDecision(decision);
+
+    try {
+      await app.callServerTool({
+        name: "submit_age_check",
+        arguments: {
+          decision: decision.decision,
+          jurisdiction: decision.jurisdiction,
+          threshold: decision.threshold,
+          age_class: decision.age_class,
+        },
+      });
+      status.textContent = `log: submit_age_check ok — ${decision.decision} in ${jur.code}`;
+    } catch (e) {
+      status.textContent = "log: submit_age_check error: " + (e?.message || e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
+  populateMonths();
+  populateYears();
+  populateDays();
+  populateRegions();
+
+  const detected = detectJurisdiction();
+  rEl.value = detected;
+  const dj = JURISDICTIONS.find(j => j.code === detected);
+  rMeta.textContent = `Auto-detected: ${dj.flag} ${dj.name}. Change if incorrect.`;
+
+  mEl.addEventListener("change", () => { populateDays(); setFormValid(); });
+  yEl.addEventListener("change", () => { populateDays(); setFormValid(); });
+  dEl.addEventListener("change", setFormValid);
+  rEl.addEventListener("change", setFormValid);
+  btn.addEventListener("click", onSubmit);
+
+  const app = new App({ name: "age-gate", version: "1.0.0" });
+  app.onerror = (e) => { status.textContent = "log: error: " + (e?.message || e); };
+  app.connect();
+
+  // Restore persistent decision (the "no retry" demonstration).
+  const prior = loadDecision();
+  if (prior) {
+    renderDecision(prior);
+    status.textContent = "log: restored prior decision from localStorage";
+  }
+</script>
+</body>
+</html>

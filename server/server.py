@@ -902,6 +902,53 @@ async def submit_age(age: int, stage: str = "") -> str:
     return f"Age recorded: {age}" + (f" ({stage})" if stage else "") + "."
 
 
+# ---------------------------------------------------------------------------
+# 25. Neutral age gate — FTC-style DOB form + jurisdiction-aware threshold.
+# The widget keeps DOB client-side; the callback receives only derived
+# facts (decision, jurisdiction, threshold, age_class). Data minimization
+# is the point: the server never sees a date of birth.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://age-gate",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def age_gate_app() -> str:
+    return _load_app("25-age-gate.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://age-gate"}})
+async def show_age_gate() -> str:
+    """Render a neutral, jurisdiction-aware age gate. The widget collects DOB
+    locally, derives a decision against the user's regional threshold
+    (COPPA / GDPR Art. 8 / LGPD / DPDP / PIPA), and persists the result so
+    the gate can't be retried. The DOB itself never leaves the widget."""
+    return "Age gate rendered. Decision will round-trip via submit_age_check."
+
+
+@mcp.tool()
+async def submit_age_check(
+    decision: str,
+    jurisdiction: str,
+    threshold: int,
+    age_class: str,
+) -> str:
+    """Receive a derived age-gate decision from the show_age_gate widget.
+
+    Args:
+        decision: "ALLOW" or "DENY".
+        jurisdiction: ISO-3166 alpha-2 code (e.g. "US", "DE") or "XX".
+        threshold: The digital-consent age that applied for the jurisdiction.
+        age_class: "meets_threshold" or "under_threshold". The widget does
+            not send the raw age — only the class — for data minimization.
+    """
+    return (
+        f"Age gate: {decision} in {jurisdiction} "
+        f"(threshold={threshold}, class={age_class})."
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
