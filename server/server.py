@@ -804,6 +804,30 @@ async def show_user_profile() -> str:
     return "User profile rendered. Submitting will update the model's context."
 
 
+# ---------------------------------------------------------------------------
+# 22. Font override — exercises the host's ability to push --font-sans /
+# --font-serif / --font-mono via styles.variables. The widget shows live
+# samples in each role, marks each as "host" or "fallback", and re-renders
+# on host-context-changed.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://font-override",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def font_override_app() -> str:
+    return _load_app("22-font-override.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://font-override"}})
+async def show_font_override() -> str:
+    """Render font-family samples for sans/serif/mono. Each updates live when
+    the host pushes --font-sans, --font-serif, or --font-mono via
+    styles.variables on host-context-changed."""
+    return "Font override inspector rendered. Push --font-sans / --font-serif / --font-mono via styles.variables to see live updates."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
