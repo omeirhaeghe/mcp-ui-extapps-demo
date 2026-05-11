@@ -836,7 +836,17 @@ async def show_font_override() -> str:
 @mcp.resource(
     "ui://product-carousel",
     mime_type="text/html;profile=mcp-app",
-    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": [
+                    "https://cdn.jsdelivr.net",
+                    "https://images.unsplash.com",
+                ],
+            },
+        }
+    },
 )
 def product_carousel_app() -> str:
     return _load_app("23-product-carousel.html")
@@ -844,9 +854,10 @@ def product_carousel_app() -> str:
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://product-carousel"}})
 async def show_product_carousel() -> str:
-    """Render a horizontal carousel of products with hover effects. Each
-    card's "Add to cart" button invokes the `add_to_cart` callback."""
-    return "Product carousel rendered. Scroll to browse, click Add to cart to round-trip."
+    """Render a horizontal carousel of products with hover effects. The cart
+    pill opens an embedded checkout modal; per-item adds round-trip via
+    `add_to_cart` and order placement via `checkout`."""
+    return "Product carousel rendered. Click cart to open checkout."
 
 
 @mcp.tool()
@@ -854,6 +865,13 @@ async def add_to_cart(product_id: str, name: str = "", price: float = 0.0) -> st
     """Receive an Add-to-Cart event from the show_product_carousel widget."""
     label = name or product_id
     return f'Added "{label}" to cart (id={product_id}, price=${price:.2f}).'
+
+
+@mcp.tool()
+async def checkout(order_id: str, items: list[dict], total: float) -> str:
+    """Receive a placed-order event from the show_product_carousel widget."""
+    qty = sum(int(it.get("qty", 1)) for it in items)
+    return f"Order {order_id} placed — {qty} item(s), total ${total:.2f}."
 
 
 if __name__ == "__main__":

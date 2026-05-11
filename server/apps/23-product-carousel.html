@@ -9,26 +9,29 @@
       --border:#e5e7eb; --accent:#6d28d9; --accent-2:#ec4899;
       --shadow: 0 1px 3px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.08);
       --shadow-lift: 0 4px 12px rgba(15,23,42,.10), 0 24px 48px rgba(109,40,217,.20);
-      --good:#16a34a; }
+      --good:#16a34a; --bad:#dc2626; --skel:#eef0f3; }
     @media (prefers-color-scheme: dark) { :root {
       --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
       --border:#23262d; --accent:#a78bfa; --accent-2:#f472b6;
       --shadow: 0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
       --shadow-lift: 0 4px 12px rgba(0,0,0,.5), 0 24px 48px rgba(167,139,250,.30);
-      --good:#22c55e; } }
+      --good:#22c55e; --bad:#f87171; --skel:#1e2028; } }
 
     html, body { margin:0; padding:0; color:var(--fg); background:var(--bg);
       font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
 
     .wrap { padding:18px 16px 22px; }
-    .header { display:flex; align-items:baseline; justify-content:space-between;
+    .header { display:flex; align-items:center; justify-content:space-between;
       margin: 0 4px 12px; gap:12px; }
-    h1 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
-    .sub { margin:0; color:var(--muted); font-size:12px; }
-    .cart-pill { padding:4px 10px; border-radius:999px; font-size:12px;
+    .title h1 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+    .title p  { margin:2px 0 0; color:var(--muted); font-size:12px; }
+    .cart-pill { padding:6px 12px; border-radius:999px; font-size:12px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color:#fff; font-weight:500; box-shadow: 0 4px 12px rgba(109,40,217,.25);
-      transition: transform .2s ease; }
+      color:#fff; font-weight:600; box-shadow: 0 4px 12px rgba(109,40,217,.25);
+      cursor:pointer; border:0; font-family: inherit;
+      transition: transform .15s ease, box-shadow .25s ease; }
+    .cart-pill:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(236,72,153,.32); }
+    .cart-pill:active { transform: translateY(0); }
     .cart-pill.pop { animation: pop .35s ease; }
     @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
 
@@ -45,36 +48,34 @@
       transition: transform .35s cubic-bezier(.2,.7,.2,1),
                   box-shadow .35s cubic-bezier(.2,.7,.2,1),
                   border-color .25s ease; }
-    .card::before { /* gradient border glow on hover */
-      content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px;
+    .card::before { content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor; mask-composite: exclude;
       opacity:0; transition: opacity .3s ease; pointer-events:none; }
-    .card:hover { transform: translateY(-6px) scale(1.02); box-shadow: var(--shadow-lift);
-      border-color: transparent; }
+    .card:hover { transform: translateY(-6px) scale(1.02); box-shadow: var(--shadow-lift); border-color: transparent; }
     .card:hover::before { opacity:1; }
 
-    .media { position:relative; height:140px; display:flex; align-items:center;
-      justify-content:center; font-size:62px; overflow:hidden;
-      background: var(--bg-grad, linear-gradient(135deg,#fde68a,#fb923c)); }
-    .media .emoji { transition: transform .5s cubic-bezier(.2,.7,.2,1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.18)); }
-    .card:hover .media .emoji { transform: scale(1.18) rotate(-4deg); }
-    .media::after { /* shine sweep */
+    .media { position:relative; height:160px; overflow:hidden; background: var(--skel); }
+    .media img { width:100%; height:100%; object-fit:cover; display:block;
+      transition: transform .6s cubic-bezier(.2,.7,.2,1), opacity .35s ease;
+      opacity:0; }
+    .media img.loaded { opacity:1; }
+    .card:hover .media img { transform: scale(1.08); }
+    .media::after {
       content:""; position:absolute; top:0; left:-60%; width:50%; height:100%;
       background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
-      transform: skewX(-20deg); transition: left .7s ease; }
+      transform: skewX(-20deg); transition: left .7s ease; pointer-events:none; }
     .card:hover .media::after { left: 120%; }
 
     .badge { position:absolute; top:10px; left:10px; padding:3px 8px;
-      background: rgba(0,0,0,.55); color:#fff; font-size:10px; font-weight:600;
+      background: rgba(0,0,0,.65); color:#fff; font-size:10px; font-weight:600;
       letter-spacing:.04em; text-transform:uppercase; border-radius:999px;
       backdrop-filter: blur(6px); }
 
     .body { padding:12px 14px 14px; }
     .name { margin:0 0 2px; font-size:14px; font-weight:600; }
-    .desc { margin:0 0 10px; font-size:12px; color:var(--muted); line-height:1.35;
-      min-height: 2.7em; }
+    .desc { margin:0 0 10px; font-size:12px; color:var(--muted); line-height:1.35; min-height: 2.7em; }
     .row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
     .price { font-size:15px; font-weight:700; letter-spacing:-0.01em; }
     .price .strike { color: var(--muted); font-size:11px; font-weight:400;
@@ -95,20 +96,97 @@
       background: var(--card); color: var(--fg); cursor:pointer;
       font:600 14px inherit; transition: background .2s ease, transform .15s ease; }
     .nav button:hover { background: var(--bg); transform: translateY(-1px); }
-    .nav button:active { transform: translateY(0); }
 
     .status { color: var(--muted); font-size:11px; padding: 6px 4px 0; min-height:14px;
       font-family: ui-monospace, monospace; }
+
+    /* -------- Checkout modal -------- */
+    .modal-back { position:fixed; inset:0; background: rgba(15,23,42,.55);
+      display:none; align-items:flex-start; justify-content:center; padding:24px 14px;
+      backdrop-filter: blur(4px); z-index: 100; overflow-y:auto;
+      animation: fade .2s ease; }
+    .modal-back.open { display:flex; }
+    @keyframes fade { from { opacity:0 } to { opacity:1 } }
+    .modal { width:100%; max-width: 640px; background: var(--card); color: var(--fg);
+      border-radius:14px; border:1px solid var(--border); box-shadow: var(--shadow-lift);
+      overflow:hidden; animation: rise .25s cubic-bezier(.2,.7,.2,1); }
+    @keyframes rise { from { transform: translateY(10px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+    .m-head { display:flex; align-items:center; justify-content:space-between;
+      padding:14px 18px; border-bottom:1px solid var(--border); }
+    .m-head h2 { margin:0; font-size:15px; font-weight:600; }
+    .m-close { background:none; border:0; font-size:20px; line-height:1; color:var(--muted);
+      cursor:pointer; padding:4px 8px; border-radius:6px; }
+    .m-close:hover { background: var(--bg); color: var(--fg); }
+
+    .m-body { display:grid; grid-template-columns: 1fr 1.1fr; gap:0; }
+    @media (max-width: 560px) { .m-body { grid-template-columns: 1fr; } }
+
+    .summary { padding:14px 16px; background: var(--bg); border-right:1px solid var(--border); }
+    @media (max-width: 560px) { .summary { border-right:0; border-bottom:1px solid var(--border); } }
+    .summary h3 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color: var(--muted); }
+    .lines { display:flex; flex-direction:column; gap:10px; max-height:260px; overflow-y:auto; padding-right:4px; }
+    .line { display:flex; gap:10px; align-items:center; }
+    .line img { width:44px; height:44px; object-fit:cover; border-radius:8px;
+      border:1px solid var(--border); background: var(--skel); flex:0 0 44px; }
+    .line .ln-name { flex:1; font-size:12px; line-height:1.3; }
+    .line .ln-sub { color: var(--muted); font-size:11px; }
+    .qty { display:flex; align-items:center; gap:4px; }
+    .qty button { width:22px; height:22px; border-radius:999px; border:1px solid var(--border);
+      background:var(--card); color:var(--fg); cursor:pointer; font:600 12px inherit; padding:0; }
+    .qty button:hover { background: var(--bg); }
+    .qty span { min-width:18px; text-align:center; font-size:12px; font-variant-numeric: tabular-nums; }
+    .ln-price { font-size:12px; font-weight:600; font-variant-numeric: tabular-nums; min-width:48px; text-align:right; }
+    .totals { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); font-size:12px; }
+    .totals .tline { display:flex; justify-content:space-between; padding:3px 0; color:var(--muted); }
+    .totals .tline.grand { color: var(--fg); font-size:14px; font-weight:700; padding-top:8px; border-top:1px solid var(--border); margin-top:6px; }
+
+    .form { padding:14px 16px; }
+    .form h3 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px 8px; }
+    .grid .full { grid-column: 1 / -1; }
+    .field { display:flex; flex-direction:column; gap:4px; }
+    .field label { font-size:11px; color: var(--muted); }
+    .field input { padding:8px 10px; background: var(--bg); border:1px solid var(--border);
+      border-radius:8px; color:var(--fg); font: inherit; font-size:13px; }
+    .field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    .place { width:100%; margin-top:12px; padding:11px 12px; border:0; border-radius:10px;
+      cursor:pointer; font: 700 14px inherit; color:#fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      background-size: 200% 100%; background-position: 0% 50%;
+      box-shadow: 0 6px 16px rgba(109,40,217,.25);
+      transition: background-position .35s ease, transform .15s ease, opacity .2s ease; }
+    .place:hover { background-position: 100% 50%; }
+    .place:active { transform: translateY(1px); }
+    .place[disabled] { opacity:.55; cursor:not-allowed; }
+    .fineprint { text-align:center; color: var(--muted); font-size:10px; margin:8px 0 0;
+      font-family: ui-monospace, monospace; }
+
+    .empty { padding:24px 16px; text-align:center; color: var(--muted); font-size:13px; }
+    .empty .ic { font-size:32px; display:block; margin-bottom:8px; }
+
+    .success { padding:28px 20px; text-align:center; }
+    .success .check { width:54px; height:54px; border-radius:999px; margin:0 auto 10px;
+      background: var(--good); color:#fff; display:flex; align-items:center; justify-content:center;
+      font-size:30px; box-shadow: 0 8px 24px rgba(22,163,74,.35);
+      animation: pop .4s ease; }
+    .success h3 { margin:0 0 4px; font-size:16px; }
+    .success p { margin:0 0 14px; color: var(--muted); font-size:13px; }
+    .success .order-id { font-family: ui-monospace, monospace; font-size:12px;
+      background: var(--bg); padding:6px 10px; border-radius:6px; display:inline-block;
+      border:1px solid var(--border); }
+    .success button { margin-top:14px; padding:9px 16px; border-radius:8px; border:1px solid var(--border);
+      background:var(--card); color:var(--fg); cursor:pointer; font:600 13px inherit; }
+    .success button:hover { background: var(--bg); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
-      <div>
+      <div class="title">
         <h1>Featured products</h1>
-        <p class="sub">Hover for the glow, click <em>Add to cart</em> for a server callback.</p>
+        <p>Hover for the glow. Click the cart for embedded checkout.</p>
       </div>
-      <div class="cart-pill" id="cart-pill">🛒 0</div>
+      <button class="cart-pill" id="cart-pill" aria-label="Open cart">🛒 <span id="cart-count">0</span></button>
     </div>
 
     <div class="scroller" id="scroller"></div>
@@ -120,38 +198,66 @@
     <div class="status" id="status">log: ready</div>
   </div>
 
+  <!-- Checkout modal -->
+  <div class="modal-back" id="modal" role="dialog" aria-modal="true" aria-label="Checkout">
+    <div class="modal">
+      <div class="m-head">
+        <h2 id="modal-title">Your cart</h2>
+        <button class="m-close" id="m-close" aria-label="Close">×</button>
+      </div>
+      <div id="modal-content"><!-- filled dynamically --></div>
+    </div>
+  </div>
+
 <script type="module">
   import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
+  // Real Unsplash photo IDs (fetched live, not fabricated).
   const PRODUCTS = [
-    { id: "sn-01", name: "Cloudwalk Sneakers",  emoji: "👟", price: 129, was: 179, badge: "Sale",     desc: "Featherweight runners with a memory-foam sole.",  grad: "linear-gradient(135deg,#fca5a5,#f472b6)" },
-    { id: "hp-02", name: "Aurora Headphones",   emoji: "🎧", price: 249,           badge: "New",      desc: "Over-ear ANC with 40h battery and spatial audio.", grad: "linear-gradient(135deg,#a5b4fc,#7dd3fc)" },
-    { id: "wt-03", name: "Nova Smartwatch",     emoji: "⌚", price: 199, was: 229,                     desc: "AMOLED face, GPS, and seven-day battery life.",    grad: "linear-gradient(135deg,#fcd34d,#fb923c)" },
-    { id: "bp-04", name: "Trailpack 24L",       emoji: "🎒", price:  89,           badge: "Eco",      desc: "Recycled ripstop, laptop sleeve, weatherproof.",   grad: "linear-gradient(135deg,#86efac,#34d399)" },
-    { id: "ca-05", name: "Field Camera",        emoji: "📷", price: 549,           badge: "Pro",      desc: "26MP APS-C with tilt screen and 4K60 video.",      grad: "linear-gradient(135deg,#c4b5fd,#a78bfa)" },
-    { id: "lp-06", name: "Pulse Speaker",       emoji: "🔊", price:  79, was:  99,                     desc: "Pocket Bluetooth speaker with 360° sound.",        grad: "linear-gradient(135deg,#fda4af,#f87171)" },
-    { id: "kb-07", name: "Tactile 65 Keyboard", emoji: "⌨️", price: 159,           badge: "Hot",      desc: "Hot-swap mech, PBT keycaps, wireless tri-mode.",   grad: "linear-gradient(135deg,#7dd3fc,#38bdf8)" },
-    { id: "cf-08", name: "Pour-Over Kettle",    emoji: "☕", price:  64,                              desc: "Gooseneck spout with temperature dial.",           grad: "linear-gradient(135deg,#fde68a,#f59e0b)" },
-    { id: "pl-09", name: "Monstera Plant",      emoji: "🪴", price:  29,           badge: "Cute",     desc: "Easy-care, low-light, definitely sentient.",       grad: "linear-gradient(135deg,#bef264,#65a30d)" },
-    { id: "sg-10", name: "Halo Sunglasses",     emoji: "🕶️", price:  89,                              desc: "UV400 polarised, titanium hinges.",                grad: "linear-gradient(135deg,#e9d5ff,#c084fc)" },
+    { id:"sn-01", name:"Cloudwalk Sneakers",  price:129, was:179, badge:"Sale",  desc:"Featherweight runners with a memory-foam sole.",   img:"1595950653106-6c9ebd614d3a" },
+    { id:"hp-02", name:"Aurora Headphones",   price:249,          badge:"New",   desc:"Over-ear ANC with 40h battery and spatial audio.", img:"1505740420928-5e560c06d30e" },
+    { id:"wt-03", name:"Nova Smartwatch",     price:199, was:229,                desc:"AMOLED face, GPS, and seven-day battery life.",    img:"1579586337278-3befd40fd17a" },
+    { id:"bp-04", name:"Trailpack 24L",       price: 89,          badge:"Eco",   desc:"Recycled ripstop, laptop sleeve, weatherproof.",   img:"1553062407-98eeb64c6a62" },
+    { id:"ca-05", name:"Field Camera",        price:549,          badge:"Pro",   desc:"26MP APS-C with tilt screen and 4K60 video.",      img:"1516035069371-29a1b244cc32" },
+    { id:"lp-06", name:"Pulse Speaker",       price: 79, was: 99,                desc:"Pocket Bluetooth speaker with 360° sound.",        img:"1627931539006-d5c4677e05ea" },
+    { id:"kb-07", name:"Tactile 65 Keyboard", price:159,          badge:"Hot",   desc:"Hot-swap mech, PBT keycaps, wireless tri-mode.",   img:"1547394765-185e1e68f34e" },
+    { id:"cf-08", name:"Pour-Over Kettle",    price: 64,                         desc:"Gooseneck spout with temperature dial.",           img:"1592417766326-088bf3da80c5" },
+    { id:"pl-09", name:"Monstera Plant",      price: 29,          badge:"Cute",  desc:"Easy-care, low-light, definitely sentient.",       img:"1503149779833-1de50ebe5f8a" },
+    { id:"sg-10", name:"Halo Sunglasses",     price: 89,                         desc:"UV400 polarised, titanium hinges.",                img:"1511499767150-a48a237f0083" },
   ];
 
+  const imgUrl = (id, w=480, h=320) =>
+    `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=80`;
+
+  const fmt = n => "$" + n.toFixed(2);
+
+  // --- State -----------------------------------------------------------------
+  const cart = new Map(); // id -> { product, qty }
   const scroller = document.getElementById("scroller");
   const cartPill = document.getElementById("cart-pill");
+  const cartCount = document.getElementById("cart-count");
   const status = document.getElementById("status");
-  let cart = 0;
+  const modal = document.getElementById("modal");
+  const modalContent = document.getElementById("modal-content");
 
-  function fmt(n) { return "$" + n.toFixed(0); }
+  function cartItemCount() {
+    let n = 0; for (const e of cart.values()) n += e.qty; return n;
+  }
+  function updateCartPill() {
+    cartCount.textContent = cartItemCount();
+    cartPill.classList.remove("pop"); void cartPill.offsetWidth; cartPill.classList.add("pop");
+  }
 
-  function render() {
+  // --- Carousel render ------------------------------------------------------
+  function renderCards() {
     scroller.innerHTML = "";
     for (const p of PRODUCTS) {
       const card = document.createElement("article");
       card.className = "card";
       card.innerHTML = `
-        <div class="media" style="--bg-grad:${p.grad}">
+        <div class="media">
           ${p.badge ? `<span class="badge">${p.badge}</span>` : ""}
-          <span class="emoji">${p.emoji}</span>
+          <img alt="" loading="lazy" referrerpolicy="no-referrer">
         </div>
         <div class="body">
           <p class="name"></p>
@@ -164,6 +270,9 @@
           <button class="add" type="button">Add to cart</button>
         </div>
       `;
+      const img = card.querySelector("img");
+      img.src = imgUrl(p.img, 480, 320);
+      img.addEventListener("load", () => img.classList.add("loaded"));
       card.querySelector(".name").textContent = p.name;
       card.querySelector(".desc").textContent = p.desc;
       const btn = card.querySelector(".add");
@@ -173,18 +282,17 @@
   }
 
   async function addToCart(p, btn) {
-    cart += 1;
-    cartPill.textContent = `🛒 ${cart}`;
-    cartPill.classList.remove("pop"); void cartPill.offsetWidth; cartPill.classList.add("pop");
+    const entry = cart.get(p.id) ?? { product: p, qty: 0 };
+    entry.qty += 1;
+    cart.set(p.id, entry);
+    updateCartPill();
+
     const original = btn.textContent;
     btn.classList.add("added");
     btn.textContent = "✓ Added";
     btn.disabled = true;
-    setTimeout(() => {
-      btn.classList.remove("added");
-      btn.textContent = original;
-      btn.disabled = false;
-    }, 1400);
+    setTimeout(() => { btn.classList.remove("added"); btn.textContent = original; btn.disabled = false; }, 1200);
+
     try {
       await app.callServerTool({
         name: "add_to_cart",
@@ -196,6 +304,7 @@
     }
   }
 
+  // --- Pagination -----------------------------------------------------------
   function pageBy(dir) {
     const card = scroller.querySelector(".card");
     const step = card ? card.getBoundingClientRect().width + 14 : 240;
@@ -204,10 +313,150 @@
   document.getElementById("prev").addEventListener("click", () => pageBy(-1));
   document.getElementById("next").addEventListener("click", () => pageBy(+1));
 
-  const app = new App({ name: "product-carousel", version: "1.0.0" });
+  // --- Modal / checkout -----------------------------------------------------
+  function openModal() {
+    renderModal();
+    modal.classList.add("open");
+  }
+  function closeModal() {
+    modal.classList.remove("open");
+  }
+  cartPill.addEventListener("click", openModal);
+  document.getElementById("m-close").addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+  function totals() {
+    const subtotal = [...cart.values()].reduce((s, e) => s + e.product.price * e.qty, 0);
+    const shipping = subtotal >= 100 || subtotal === 0 ? 0 : 6.99;
+    const tax = +(subtotal * 0.0875).toFixed(2);
+    const total = +(subtotal + shipping + tax).toFixed(2);
+    return { subtotal, shipping, tax, total };
+  }
+
+  function renderModal() {
+    if (cart.size === 0) {
+      document.getElementById("modal-title").textContent = "Your cart";
+      modalContent.innerHTML = `
+        <div class="empty">
+          <span class="ic">🛒</span>
+          Your cart is empty.<br>Add a few things to check out.
+        </div>`;
+      return;
+    }
+
+    document.getElementById("modal-title").textContent = "Checkout";
+    const t = totals();
+    const lines = [...cart.values()].map(({ product, qty }) => `
+      <div class="line" data-id="${product.id}">
+        <img alt="" referrerpolicy="no-referrer" src="${imgUrl(product.img, 88, 88)}">
+        <div class="ln-name">
+          ${product.name}
+          <div class="ln-sub">${fmt(product.price)} each</div>
+        </div>
+        <div class="qty">
+          <button type="button" data-act="dec" aria-label="Decrease">−</button>
+          <span>${qty}</span>
+          <button type="button" data-act="inc" aria-label="Increase">+</button>
+        </div>
+        <div class="ln-price">${fmt(product.price * qty)}</div>
+      </div>
+    `).join("");
+
+    modalContent.innerHTML = `
+      <div class="m-body">
+        <aside class="summary">
+          <h3>Order summary</h3>
+          <div class="lines">${lines}</div>
+          <div class="totals">
+            <div class="tline"><span>Subtotal</span><span>${fmt(t.subtotal)}</span></div>
+            <div class="tline"><span>Shipping</span><span>${t.shipping === 0 ? "Free" : fmt(t.shipping)}</span></div>
+            <div class="tline"><span>Tax (est.)</span><span>${fmt(t.tax)}</span></div>
+            <div class="tline grand"><span>Total</span><span>${fmt(t.total)}</span></div>
+          </div>
+        </aside>
+        <section class="form">
+          <h3>Contact &amp; shipping</h3>
+          <div class="grid">
+            <div class="field full"><label>Email</label><input id="f-email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+            <div class="field"><label>First name</label><input id="f-fname" placeholder="Jane" autocomplete="given-name"></div>
+            <div class="field"><label>Last name</label><input id="f-lname" placeholder="Doe" autocomplete="family-name"></div>
+            <div class="field full"><label>Address</label><input id="f-addr" placeholder="123 Market St" autocomplete="street-address"></div>
+            <div class="field"><label>City</label><input id="f-city" placeholder="San Francisco" autocomplete="address-level2"></div>
+            <div class="field"><label>ZIP</label><input id="f-zip" placeholder="94103" autocomplete="postal-code"></div>
+          </div>
+          <h3 style="margin-top:14px">Payment</h3>
+          <div class="grid">
+            <div class="field full"><label>Card number</label><input id="f-card" placeholder="4242 4242 4242 4242" inputmode="numeric" autocomplete="cc-number"></div>
+            <div class="field"><label>Expiry</label><input id="f-exp" placeholder="MM/YY" inputmode="numeric" autocomplete="cc-exp"></div>
+            <div class="field"><label>CVC</label><input id="f-cvc" placeholder="123" inputmode="numeric" autocomplete="cc-csc"></div>
+          </div>
+          <button class="place" id="place" type="button">Place order — ${fmt(t.total)}</button>
+          <p class="fineprint">Mock checkout. No real charge, no real data sent.</p>
+        </section>
+      </div>
+    `;
+
+    // Qty controls
+    modalContent.querySelectorAll(".line .qty button").forEach(b => {
+      b.addEventListener("click", (e) => {
+        const line = b.closest(".line");
+        const id = line.dataset.id;
+        const entry = cart.get(id);
+        if (!entry) return;
+        if (b.dataset.act === "inc") entry.qty += 1;
+        else entry.qty -= 1;
+        if (entry.qty <= 0) cart.delete(id);
+        updateCartPill();
+        renderModal();
+      });
+    });
+
+    document.getElementById("place").addEventListener("click", placeOrder);
+  }
+
+  async function placeOrder() {
+    const btn = document.getElementById("place");
+    btn.disabled = true;
+    btn.textContent = "Processing…";
+    const t = totals();
+    const items = [...cart.values()].map(({ product, qty }) => ({
+      product_id: product.id, name: product.name, price: product.price, qty,
+    }));
+    // Generate a friendly fake order id.
+    const orderId = "ORD-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+
+    try {
+      await app.callServerTool({
+        name: "checkout",
+        arguments: { order_id: orderId, items, total: t.total },
+      });
+      status.textContent = `log: checkout ok — ${orderId} ${fmt(t.total)}`;
+    } catch (e) {
+      status.textContent = "log: checkout error: " + (e?.message || e);
+    }
+
+    cart.clear();
+    updateCartPill();
+
+    document.getElementById("modal-title").textContent = "Order placed";
+    modalContent.innerHTML = `
+      <div class="success">
+        <div class="check">✓</div>
+        <h3>Thanks for your order!</h3>
+        <p>We sent a confirmation email (not really).</p>
+        <div class="order-id">${orderId} · ${fmt(t.total)}</div>
+        <div><button type="button" id="continue">Continue shopping</button></div>
+      </div>
+    `;
+    document.getElementById("continue").addEventListener("click", closeModal);
+  }
+
+  // --- Connect --------------------------------------------------------------
+  const app = new App({ name: "product-carousel", version: "1.1.0" });
   app.onerror = (e) => { status.textContent = "log: error: " + (e?.message || e); };
   app.connect();
-  render();
+  renderCards();
 </script>
 </body>
 </html>
