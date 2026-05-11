@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Age Picker — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#0f172a; --muted:#64748b; --bg:#ffffff; --card:#ffffff;
+      --border:#e5e7eb; --good:#16a34a;
+      --shadow: 0 8px 28px rgba(15,23,42,.10); }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --good:#22c55e;
+      --shadow: 0 12px 40px rgba(0,0,0,.5); } }
+
+    html, body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+    .stage-shell {
+      margin:16px; padding:22px 20px 20px; border-radius:18px;
+      background: var(--card); border:1px solid var(--border);
+      box-shadow: var(--shadow); position:relative; overflow:hidden;
+      transition: background .6s ease, border-color .6s ease; }
+    .stage-shell::before {
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background: radial-gradient(120% 80% at 50% 0%, var(--tint-a, #c4b5fd55) 0%, transparent 60%),
+                  radial-gradient(80% 80% at 100% 100%, var(--tint-b, #f472b633) 0%, transparent 60%);
+      transition: opacity .6s ease; z-index:0; }
+    .stage-shell > * { position:relative; z-index:1; }
+
+    h1 { margin:0 0 2px; font-size:15px; font-weight:600; letter-spacing:-0.01em; }
+    .sub { margin:0 0 14px; color:var(--muted); font-size:12px; }
+
+    /* ---- Big age display ---- */
+    .display { text-align:center; padding: 4px 0 8px; }
+    .num-wrap { display:inline-flex; align-items:baseline; gap:6px; }
+    .num { font-size: 84px; font-weight: 800; line-height:1; letter-spacing:-0.04em;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(135deg, var(--num-a, #6d28d9), var(--num-b, #ec4899));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      transition: transform .25s cubic-bezier(.2,.7,.2,1); display:inline-block;
+      filter: drop-shadow(0 6px 18px rgba(109,40,217,.18)); }
+    .num.bump { animation: bump .35s cubic-bezier(.2,.7,.2,1); }
+    @keyframes bump { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+    .unit { font-size:14px; color: var(--muted); font-weight:500; }
+
+    .stage-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
+      border-radius:999px; background: rgba(255,255,255,.55); border:1px solid var(--border);
+      font-size:12px; font-weight:600; margin-top:4px; backdrop-filter: blur(6px);
+      transition: transform .3s cubic-bezier(.2,.7,.2,1), opacity .25s ease; }
+    @media (prefers-color-scheme: dark) { .stage-chip { background: rgba(255,255,255,.06); } }
+    .stage-chip.swap { animation: chipSwap .35s cubic-bezier(.2,.7,.2,1); }
+    @keyframes chipSwap {
+      0%{transform: translateY(-6px); opacity:0}
+      100%{transform: translateY(0); opacity:1} }
+    .stage-emoji { font-size:18px; line-height:1; }
+
+    /* ---- Wheel picker ---- */
+    .wheel-wrap { position:relative; height: 200px; margin: 14px auto 4px;
+      max-width: 260px; -webkit-mask-image: linear-gradient(to bottom,
+        transparent 0%, black 20%, black 80%, transparent 100%);
+      mask-image: linear-gradient(to bottom,
+        transparent 0%, black 20%, black 80%, transparent 100%); }
+    .wheel { height:100%; overflow-y:scroll; overflow-x:hidden;
+      scroll-snap-type: y mandatory; scrollbar-width: none;
+      -ms-overflow-style: none; }
+    .wheel::-webkit-scrollbar { display:none; }
+    .wheel-inner { display:flex; flex-direction:column; }
+    .tick { height: 40px; flex:0 0 40px; display:flex; align-items:center;
+      justify-content:center; scroll-snap-align: center;
+      font-size: 22px; font-weight:600; font-variant-numeric: tabular-nums;
+      color: var(--fg); will-change: transform, opacity;
+      transition: transform .12s linear, opacity .12s linear, color .25s ease;
+      cursor:pointer; user-select:none; -webkit-user-select:none; }
+    .wheel-highlight { position:absolute; left:0; right:0; top:80px; height:40px;
+      pointer-events:none; border-top:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(90deg,
+        transparent 0%, var(--hl, rgba(109,40,217,.10)) 50%, transparent 100%); }
+
+    /* ---- Manual input + confirm ---- */
+    .row { display:flex; gap:10px; align-items:center; margin:14px 4px 0;
+      justify-content:center; }
+    .row label { color:var(--muted); font-size:12px; }
+    .row input { width: 78px; padding:8px 10px; background: var(--bg);
+      border:1px solid var(--border); border-radius:8px; color:var(--fg);
+      font: 600 16px inherit; text-align:center; font-variant-numeric: tabular-nums; }
+    .row input:focus { outline:2px solid var(--num-a, #6d28d9); outline-offset:0; border-color:transparent; }
+
+    .confirm { width: calc(100% - 8px); margin: 14px 4px 0; padding: 11px 12px;
+      border:0; border-radius:10px; cursor:pointer; font: 700 14px inherit; color:#fff;
+      background: linear-gradient(135deg, var(--num-a, #6d28d9), var(--num-b, #ec4899));
+      background-size: 200% 100%; background-position: 0% 50%;
+      box-shadow: 0 6px 16px rgba(109,40,217,.25);
+      transition: background-position .35s ease, transform .15s ease, opacity .2s ease; }
+    .confirm:hover { background-position: 100% 50%; }
+    .confirm:active { transform: translateY(1px); }
+    .confirm.done { background: var(--good); }
+
+    .status { color: var(--muted); font-size:11px; margin: 10px 4px 0; min-height:14px;
+      font-family: ui-monospace, monospace; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="stage-shell" id="shell"
+       style="--tint-a:#c4b5fd55; --tint-b:#f472b633; --num-a:#6d28d9; --num-b:#ec4899; --hl:rgba(109,40,217,.10)">
+    <h1>How old are you?</h1>
+    <p class="sub">Scroll the wheel, or type your age below.</p>
+
+    <div class="display">
+      <div class="num-wrap">
+        <span class="num" id="age-num">25</span>
+        <span class="unit">years</span>
+      </div>
+      <div>
+        <span class="stage-chip" id="stage-chip">
+          <span class="stage-emoji" id="stage-emoji">🧑</span>
+          <span id="stage-label">Young adult</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="wheel-wrap">
+      <div class="wheel" id="wheel">
+        <div class="wheel-inner" id="wheel-inner"></div>
+      </div>
+      <div class="wheel-highlight"></div>
+    </div>
+
+    <div class="row">
+      <label for="manual">Or type:</label>
+      <input id="manual" type="number" min="0" max="120" inputmode="numeric" />
+    </div>
+
+    <button class="confirm" id="confirm" type="button">Confirm age</button>
+    <div class="status" id="status">log: ready</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const MIN = 0, MAX = 120, TICK = 40, INITIAL = 25;
+
+  // Life stages and the visual theme they cast over the shell.
+  const STAGES = [
+    { upTo:  1, emoji:"👶", label:"Infant",       tintA:"#bae6fd66", tintB:"#fbcfe833", numA:"#0284c7", numB:"#f472b6", hl:"rgba(2,132,199,.10)" },
+    { upTo:  4, emoji:"🧒", label:"Toddler",      tintA:"#fde68a66", tintB:"#fbcfe833", numA:"#d97706", numB:"#ec4899", hl:"rgba(217,119,6,.10)" },
+    { upTo: 12, emoji:"🧒", label:"Kid",          tintA:"#fde68a66", tintB:"#bbf7d033", numA:"#ca8a04", numB:"#16a34a", hl:"rgba(202,138,4,.10)" },
+    { upTo: 17, emoji:"🧑", label:"Teen",         tintA:"#ddd6fe66", tintB:"#fbcfe833", numA:"#7c3aed", numB:"#ec4899", hl:"rgba(124,58,237,.12)" },
+    { upTo: 29, emoji:"🧑", label:"Young adult",  tintA:"#c4b5fd55", tintB:"#f472b633", numA:"#6d28d9", numB:"#ec4899", hl:"rgba(109,40,217,.10)" },
+    { upTo: 44, emoji:"🧑", label:"Adult",        tintA:"#a7f3d066", tintB:"#bae6fd33", numA:"#059669", numB:"#0ea5e9", hl:"rgba(5,150,105,.10)" },
+    { upTo: 64, emoji:"🧔", label:"Middle-aged",  tintA:"#fed7aa66", tintB:"#fecaca33", numA:"#c2410c", numB:"#dc2626", hl:"rgba(194,65,12,.10)" },
+    { upTo:120, emoji:"🧓", label:"Senior",       tintA:"#ddd6fe66", tintB:"#fde68a33", numA:"#7c3aed", numB:"#d97706", hl:"rgba(124,58,237,.10)" },
+  ];
+
+  const stageFor = (age) => STAGES.find(s => age <= s.upTo) ?? STAGES[STAGES.length - 1];
+
+  // ---- Build the wheel ticks --------------------------------------------------
+  const wheel = document.getElementById("wheel");
+  const inner = document.getElementById("wheel-inner");
+  const padTop = document.createElement("div");
+  const padBot = document.createElement("div");
+  padTop.style.height = padBot.style.height = (200 / 2 - TICK / 2) + "px";
+  padTop.style.flex = padBot.style.flex = "0 0 auto";
+  inner.appendChild(padTop);
+  for (let n = MIN; n <= MAX; n++) {
+    const t = document.createElement("div");
+    t.className = "tick"; t.textContent = n; t.dataset.n = n;
+    t.addEventListener("click", () => setAge(n, "wheel-click"));
+    inner.appendChild(t);
+  }
+  inner.appendChild(padBot);
+  const ticks = [...inner.querySelectorAll(".tick")];
+
+  // ---- Visual state -----------------------------------------------------------
+  const ageNum   = document.getElementById("age-num");
+  const shell    = document.getElementById("shell");
+  const stageEl  = document.getElementById("stage-chip");
+  const emojiEl  = document.getElementById("stage-emoji");
+  const labelEl  = document.getElementById("stage-label");
+  const manual   = document.getElementById("manual");
+  const confirm  = document.getElementById("confirm");
+  const status   = document.getElementById("status");
+
+  let currentAge = INITIAL;
+  let lastStage = null;
+  let scrollSource = "init"; // "wheel-scroll" | "manual" | "wheel-click" | "init"
+
+  function applyVisuals(age) {
+    const s = stageFor(age);
+    shell.style.setProperty("--tint-a", s.tintA);
+    shell.style.setProperty("--tint-b", s.tintB);
+    shell.style.setProperty("--num-a",  s.numA);
+    shell.style.setProperty("--num-b",  s.numB);
+    shell.style.setProperty("--hl",     s.hl);
+    if (s.label !== lastStage) {
+      lastStage = s.label;
+      emojiEl.textContent = s.emoji;
+      labelEl.textContent = s.label;
+      stageEl.classList.remove("swap"); void stageEl.offsetWidth; stageEl.classList.add("swap");
+    }
+  }
+
+  function repaintWheelEffects() {
+    const wh = wheel.clientHeight;
+    const center = wheel.scrollTop + wh / 2;
+    for (const t of ticks) {
+      const ty = t.offsetTop + TICK / 2;
+      const d = Math.abs(ty - center);
+      const norm = Math.min(d / (wh / 2), 1);
+      const scale = 1 - norm * 0.45;
+      const opacity = 1 - norm * 0.75;
+      t.style.transform = `scale(${scale.toFixed(3)})`;
+      t.style.opacity = opacity.toFixed(3);
+    }
+  }
+
+  function setAge(age, source) {
+    age = Math.max(MIN, Math.min(MAX, age|0));
+    if (age !== currentAge) {
+      currentAge = age;
+      ageNum.textContent = age;
+      ageNum.classList.remove("bump"); void ageNum.offsetWidth; ageNum.classList.add("bump");
+      applyVisuals(age);
+    }
+    if (document.activeElement !== manual) manual.value = age;
+    if (source !== "wheel-scroll") {
+      scrollSource = source;
+      const targetTop = age * TICK;
+      wheel.scrollTo({ top: targetTop, behavior: source === "init" ? "auto" : "smooth" });
+    }
+    // Reset confirm if user changes after success.
+    if (confirm.classList.contains("done")) {
+      confirm.classList.remove("done");
+      confirm.textContent = "Confirm age";
+    }
+  }
+
+  // ---- Wire up ----------------------------------------------------------------
+  let scrollRaf = 0;
+  wheel.addEventListener("scroll", () => {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      repaintWheelEffects();
+      const n = Math.round(wheel.scrollTop / TICK);
+      if (n !== currentAge) setAge(n, "wheel-scroll");
+    });
+  });
+
+  manual.addEventListener("input", () => {
+    const v = parseInt(manual.value, 10);
+    if (Number.isFinite(v)) setAge(v, "manual");
+  });
+  manual.addEventListener("blur", () => { manual.value = currentAge; });
+
+  confirm.addEventListener("click", async () => {
+    const age = currentAge;
+    confirm.classList.add("done");
+    confirm.textContent = `✓ Age ${age} confirmed`;
+    try {
+      await app.callServerTool({
+        name: "submit_age",
+        arguments: { age, stage: stageFor(age).label },
+      });
+      status.textContent = `log: submit_age ok — ${age} (${stageFor(age).label})`;
+    } catch (e) {
+      status.textContent = "log: submit_age error: " + (e?.message || e);
+    }
+  });
+
+  // ---- Connect ----------------------------------------------------------------
+  const app = new App({ name: "age-picker", version: "1.0.0" });
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    if (Number.isFinite(args.age)) setAge(args.age|0, "init");
+  };
+  app.onerror = (e) => { status.textContent = "log: error: " + (e?.message || e); };
+  app.connect();
+
+  // Initial paint
+  setAge(INITIAL, "init");
+  requestAnimationFrame(() => requestAnimationFrame(repaintWheelEffects));
+</script>
+</body>
+</html>

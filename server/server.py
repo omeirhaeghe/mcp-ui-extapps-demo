@@ -874,6 +874,34 @@ async def checkout(order_id: str, items: list[dict], total: float) -> str:
     return f"Order {order_id} placed — {qty} item(s), total ${total:.2f}."
 
 
+# ---------------------------------------------------------------------------
+# 24. Age picker — iOS-style scroll wheel + manual numeric input, with a
+# life-stage chip and a gradient backdrop that morphs as the age changes.
+# Submit fires the `submit_age` callback.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://age-picker",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def age_picker_app() -> str:
+    return _load_app("24-age-picker.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://age-picker"}})
+async def show_age_picker(age: int = 25) -> str:
+    """Render a wheel-style age picker. Scroll the wheel or type a number;
+    Confirm fires the `submit_age` callback."""
+    return f"Age picker rendered (start={age})."
+
+
+@mcp.tool()
+async def submit_age(age: int, stage: str = "") -> str:
+    """Receive a confirmed age from the show_age_picker widget."""
+    return f"Age recorded: {age}" + (f" ({stage})" if stage else "") + "."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
