@@ -51,11 +51,12 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 | 19 | `show_internal_counter` | Counter with model-hidden +1 callback               | `_meta.ui.visibility: ["app"]` — `bump_counter` is callable from the iframe but absent from the model's `tools/list` |
 | 20 | `show_url`              | Wraps an arbitrary URL as an MCP-app via nested iframe | `_meta.ui.csp.frameDomains` (CSP `frame-src`) — surfaces both CSP-block and `X-Frame-Options: DENY` failure modes |
 | 21 | `show_user_profile`     | Preferences form (name / units / reply style)       | `ui/update-model-context` (view→host) — pushes context blocks into the model with no `tools/call` round-trip |
+| 23 | `show_product_carousel` | Snap-scrolling product carousel with hover effects  | `tools/call` (`add_to_cart`) — also a CSS playground (gradient borders, shine sweep, lift-on-hover) |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
 `record_punch_score`, `advance_adventure`, `record_florida_score`,
-`submit_survey`, `bump_counter` (app-only).
+`submit_survey`, `bump_counter` (app-only), `add_to_cart`.
 
 ---
 

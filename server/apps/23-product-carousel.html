@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Product Carousel — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#0f172a; --muted:#64748b; --bg:#ffffff; --card:#ffffff;
+      --border:#e5e7eb; --accent:#6d28d9; --accent-2:#ec4899;
+      --shadow: 0 1px 3px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.08);
+      --shadow-lift: 0 4px 12px rgba(15,23,42,.10), 0 24px 48px rgba(109,40,217,.20);
+      --good:#16a34a; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#a78bfa; --accent-2:#f472b6;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
+      --shadow-lift: 0 4px 12px rgba(0,0,0,.5), 0 24px 48px rgba(167,139,250,.30);
+      --good:#22c55e; } }
+
+    html, body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+    .wrap { padding:18px 16px 22px; }
+    .header { display:flex; align-items:baseline; justify-content:space-between;
+      margin: 0 4px 12px; gap:12px; }
+    h1 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+    .sub { margin:0; color:var(--muted); font-size:12px; }
+    .cart-pill { padding:4px 10px; border-radius:999px; font-size:12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color:#fff; font-weight:500; box-shadow: 0 4px 12px rgba(109,40,217,.25);
+      transition: transform .2s ease; }
+    .cart-pill.pop { animation: pop .35s ease; }
+    @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+    .scroller { display:flex; gap:14px; overflow-x:auto; scroll-snap-type: x mandatory;
+      padding: 8px 4px 18px; scroll-padding-left: 4px;
+      -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent; }
+    .scroller::-webkit-scrollbar { height: 8px; }
+    .scroller::-webkit-scrollbar-thumb { background: var(--border); border-radius:8px; }
+
+    .card { position:relative; flex: 0 0 220px; scroll-snap-align: start;
+      background: var(--card); border:1px solid var(--border); border-radius:14px;
+      overflow:hidden; box-shadow: var(--shadow);
+      transition: transform .35s cubic-bezier(.2,.7,.2,1),
+                  box-shadow .35s cubic-bezier(.2,.7,.2,1),
+                  border-color .25s ease; }
+    .card::before { /* gradient border glow on hover */
+      content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      opacity:0; transition: opacity .3s ease; pointer-events:none; }
+    .card:hover { transform: translateY(-6px) scale(1.02); box-shadow: var(--shadow-lift);
+      border-color: transparent; }
+    .card:hover::before { opacity:1; }
+
+    .media { position:relative; height:140px; display:flex; align-items:center;
+      justify-content:center; font-size:62px; overflow:hidden;
+      background: var(--bg-grad, linear-gradient(135deg,#fde68a,#fb923c)); }
+    .media .emoji { transition: transform .5s cubic-bezier(.2,.7,.2,1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.18)); }
+    .card:hover .media .emoji { transform: scale(1.18) rotate(-4deg); }
+    .media::after { /* shine sweep */
+      content:""; position:absolute; top:0; left:-60%; width:50%; height:100%;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
+      transform: skewX(-20deg); transition: left .7s ease; }
+    .card:hover .media::after { left: 120%; }
+
+    .badge { position:absolute; top:10px; left:10px; padding:3px 8px;
+      background: rgba(0,0,0,.55); color:#fff; font-size:10px; font-weight:600;
+      letter-spacing:.04em; text-transform:uppercase; border-radius:999px;
+      backdrop-filter: blur(6px); }
+
+    .body { padding:12px 14px 14px; }
+    .name { margin:0 0 2px; font-size:14px; font-weight:600; }
+    .desc { margin:0 0 10px; font-size:12px; color:var(--muted); line-height:1.35;
+      min-height: 2.7em; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .price { font-size:15px; font-weight:700; letter-spacing:-0.01em; }
+    .price .strike { color: var(--muted); font-size:11px; font-weight:400;
+      text-decoration: line-through; margin-right:6px; }
+
+    .add { width:100%; margin-top:10px; padding:9px 12px; border:0; border-radius:8px;
+      cursor:pointer; font: 600 13px inherit; color:#fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      background-size: 200% 100%; background-position: 0% 50%;
+      transition: background-position .35s ease, transform .15s ease, box-shadow .25s ease;
+      box-shadow: 0 4px 10px rgba(109,40,217,.18); }
+    .add:hover { background-position: 100% 50%; box-shadow: 0 8px 20px rgba(236,72,153,.30); }
+    .add:active { transform: translateY(1px) scale(.98); }
+    .add.added { background: var(--good); box-shadow: 0 4px 12px rgba(22,163,74,.30); }
+
+    .nav { display:flex; gap:6px; justify-content:flex-end; margin: 2px 4px 0; }
+    .nav button { width:30px; height:30px; border-radius:999px; border:1px solid var(--border);
+      background: var(--card); color: var(--fg); cursor:pointer;
+      font:600 14px inherit; transition: background .2s ease, transform .15s ease; }
+    .nav button:hover { background: var(--bg); transform: translateY(-1px); }
+    .nav button:active { transform: translateY(0); }
+
+    .status { color: var(--muted); font-size:11px; padding: 6px 4px 0; min-height:14px;
+      font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>Featured products</h1>
+        <p class="sub">Hover for the glow, click <em>Add to cart</em> for a server callback.</p>
+      </div>
+      <div class="cart-pill" id="cart-pill">🛒 0</div>
+    </div>
+
+    <div class="scroller" id="scroller"></div>
+
+    <div class="nav">
+      <button id="prev" aria-label="Previous">‹</button>
+      <button id="next" aria-label="Next">›</button>
+    </div>
+    <div class="status" id="status">log: ready</div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const PRODUCTS = [
+    { id: "sn-01", name: "Cloudwalk Sneakers",  emoji: "👟", price: 129, was: 179, badge: "Sale",     desc: "Featherweight runners with a memory-foam sole.",  grad: "linear-gradient(135deg,#fca5a5,#f472b6)" },
+    { id: "hp-02", name: "Aurora Headphones",   emoji: "🎧", price: 249,           badge: "New",      desc: "Over-ear ANC with 40h battery and spatial audio.", grad: "linear-gradient(135deg,#a5b4fc,#7dd3fc)" },
+    { id: "wt-03", name: "Nova Smartwatch",     emoji: "⌚", price: 199, was: 229,                     desc: "AMOLED face, GPS, and seven-day battery life.",    grad: "linear-gradient(135deg,#fcd34d,#fb923c)" },
+    { id: "bp-04", name: "Trailpack 24L",       emoji: "🎒", price:  89,           badge: "Eco",      desc: "Recycled ripstop, laptop sleeve, weatherproof.",   grad: "linear-gradient(135deg,#86efac,#34d399)" },
+    { id: "ca-05", name: "Field Camera",        emoji: "📷", price: 549,           badge: "Pro",      desc: "26MP APS-C with tilt screen and 4K60 video.",      grad: "linear-gradient(135deg,#c4b5fd,#a78bfa)" },
+    { id: "lp-06", name: "Pulse Speaker",       emoji: "🔊", price:  79, was:  99,                     desc: "Pocket Bluetooth speaker with 360° sound.",        grad: "linear-gradient(135deg,#fda4af,#f87171)" },
+    { id: "kb-07", name: "Tactile 65 Keyboard", emoji: "⌨️", price: 159,           badge: "Hot",      desc: "Hot-swap mech, PBT keycaps, wireless tri-mode.",   grad: "linear-gradient(135deg,#7dd3fc,#38bdf8)" },
+    { id: "cf-08", name: "Pour-Over Kettle",    emoji: "☕", price:  64,                              desc: "Gooseneck spout with temperature dial.",           grad: "linear-gradient(135deg,#fde68a,#f59e0b)" },
+    { id: "pl-09", name: "Monstera Plant",      emoji: "🪴", price:  29,           badge: "Cute",     desc: "Easy-care, low-light, definitely sentient.",       grad: "linear-gradient(135deg,#bef264,#65a30d)" },
+    { id: "sg-10", name: "Halo Sunglasses",     emoji: "🕶️", price:  89,                              desc: "UV400 polarised, titanium hinges.",                grad: "linear-gradient(135deg,#e9d5ff,#c084fc)" },
+  ];
+
+  const scroller = document.getElementById("scroller");
+  const cartPill = document.getElementById("cart-pill");
+  const status = document.getElementById("status");
+  let cart = 0;
+
+  function fmt(n) { return "$" + n.toFixed(0); }
+
+  function render() {
+    scroller.innerHTML = "";
+    for (const p of PRODUCTS) {
+      const card = document.createElement("article");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="media" style="--bg-grad:${p.grad}">
+          ${p.badge ? `<span class="badge">${p.badge}</span>` : ""}
+          <span class="emoji">${p.emoji}</span>
+        </div>
+        <div class="body">
+          <p class="name"></p>
+          <p class="desc"></p>
+          <div class="row">
+            <div class="price">
+              ${p.was ? `<span class="strike">${fmt(p.was)}</span>` : ""}${fmt(p.price)}
+            </div>
+          </div>
+          <button class="add" type="button">Add to cart</button>
+        </div>
+      `;
+      card.querySelector(".name").textContent = p.name;
+      card.querySelector(".desc").textContent = p.desc;
+      const btn = card.querySelector(".add");
+      btn.addEventListener("click", () => addToCart(p, btn));
+      scroller.appendChild(card);
+    }
+  }
+
+  async function addToCart(p, btn) {
+    cart += 1;
+    cartPill.textContent = `🛒 ${cart}`;
+    cartPill.classList.remove("pop"); void cartPill.offsetWidth; cartPill.classList.add("pop");
+    const original = btn.textContent;
+    btn.classList.add("added");
+    btn.textContent = "✓ Added";
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.classList.remove("added");
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 1400);
+    try {
+      await app.callServerTool({
+        name: "add_to_cart",
+        arguments: { product_id: p.id, name: p.name, price: p.price },
+      });
+      status.textContent = `log: add_to_cart ok — ${p.name}`;
+    } catch (e) {
+      status.textContent = "log: add_to_cart error: " + (e?.message || e);
+    }
+  }
+
+  function pageBy(dir) {
+    const card = scroller.querySelector(".card");
+    const step = card ? card.getBoundingClientRect().width + 14 : 240;
+    scroller.scrollBy({ left: dir * step * 2, behavior: "smooth" });
+  }
+  document.getElementById("prev").addEventListener("click", () => pageBy(-1));
+  document.getElementById("next").addEventListener("click", () => pageBy(+1));
+
+  const app = new App({ name: "product-carousel", version: "1.0.0" });
+  app.onerror = (e) => { status.textContent = "log: error: " + (e?.message || e); };
+  app.connect();
+  render();
+</script>
+</body>
+</html>

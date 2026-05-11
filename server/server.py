@@ -828,6 +828,34 @@ async def show_font_override() -> str:
     return "Font override inspector rendered. Push --font-sans / --font-serif / --font-mono via styles.variables to see live updates."
 
 
+# ---------------------------------------------------------------------------
+# 23. Product carousel — horizontal snap-scrolling shop with hover effects;
+# each "Add to cart" button round-trips through the `add_to_cart` callback.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://product-carousel",
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": _SDK_CSP}},
+)
+def product_carousel_app() -> str:
+    return _load_app("23-product-carousel.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://product-carousel"}})
+async def show_product_carousel() -> str:
+    """Render a horizontal carousel of products with hover effects. Each
+    card's "Add to cart" button invokes the `add_to_cart` callback."""
+    return "Product carousel rendered. Scroll to browse, click Add to cart to round-trip."
+
+
+@mcp.tool()
+async def add_to_cart(product_id: str, name: str = "", price: float = 0.0) -> str:
+    """Receive an Add-to-Cart event from the show_product_carousel widget."""
+    label = name or product_id
+    return f'Added "{label}" to cart (id={product_id}, price=${price:.2f}).'
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
