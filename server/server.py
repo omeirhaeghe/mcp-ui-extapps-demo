@@ -950,10 +950,10 @@ async def submit_age_check(
 
 
 # ---------------------------------------------------------------------------
-# 26. News roll — Taboola-style endless list of Florida Man / weird news,
-# pulled live from Reddit (r/FloridaMan + r/FloridaManNews + r/nottheonion).
-# Thumbnails route through the wsrv.nl image proxy so the CSP allowlist
-# stays tight regardless of which CDN Reddit's previews land on.
+# 26. News roll — Taboola-style endless list of fabricated Florida Man
+# headlines. All content is client-side; only thumbnails hit the network
+# (random photos via picsum.photos, routed through the wsrv.nl proxy so
+# the CSP allowlist stays tight). No upstream news API to rate-limit.
 # ---------------------------------------------------------------------------
 
 @mcp.resource(
@@ -967,9 +967,6 @@ async def submit_age_check(
                     "https://cdn.jsdelivr.net",
                     "https://wsrv.nl",
                 ],
-                "connectDomains": [
-                    "https://www.reddit.com",
-                ],
             },
         }
     },
@@ -980,9 +977,10 @@ def news_roll_app() -> str:
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://news-roll"}})
 async def show_news_roll() -> str:
-    """Render an endless, Taboola-style Florida-Man news roll. Paginates
-    Reddit's public JSON feed (r/FloridaMan + r/FloridaManNews + r/nottheonion)
-    on scroll and opens each story via ui/open-link."""
+    """Render an endless, Taboola-style Florida-Man news roll. Stories are
+    fabricated and cycle through with rotating prefixes; thumbnails are
+    random photos. Each card opens en.wikipedia.org/wiki/Florida_Man via
+    ui/open-link."""
     return "Florida Man Wire rendered. Scroll for more weirdness."
 
 

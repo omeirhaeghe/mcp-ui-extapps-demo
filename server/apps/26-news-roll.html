@@ -122,28 +122,117 @@
 <script type="module">
   import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
-  // raw_json=1 disables HTML-entity encoding in image URLs so they can
-  // be used straight from the iframe.
-  const SUBREDDITS = ["FloridaMan", "FloridaManNews", "nottheonion"];
-  const PAGE_SIZE = 15;
+  const PAGE_SIZE = 8;
   const PROXY = "https://wsrv.nl/?url=";
-  const API = (after) =>
-    `https://www.reddit.com/r/${SUBREDDITS.join("+")}/hot.json` +
-    `?limit=${PAGE_SIZE}&raw_json=1${after ? `&after=${after}` : ""}`;
+  const LANDING = "https://en.wikipedia.org/wiki/Florida_Man";
+
+  // Curated fake Florida-Man headlines. We loop through these and apply a
+  // rotating prefix ("Update:", "BREAKING:", …) on subsequent cycles so the
+  // feed feels endless without ever showing the same exact card twice in a row.
+  const STORIES = [
+    { t: "Florida Man Tries to Pay Bar Tab With Live Alligator, Banned From Hooters",
+      s: "Pensacola PD says the 3-foot reptile was returned to a nearby retention pond. The tab — $42 — remains unpaid.",
+      src: "Pensacola Post" },
+    { t: "Florida Woman Steals Police Cruiser to Make 4 AM Wawa Run",
+      s: "She was caught after parking diagonally across two handicap spots. \"The lights were already on,\" she told officers.",
+      src: "Sunshine Daily" },
+    { t: "Florida Man Arrested for Selling Hurricane Insurance Outside Publix",
+      s: "Policies covered \"acts of God, gators, and bad vibes.\" Underwriter was reportedly his cousin Reggie.",
+      src: "Tampa Bay Tribune" },
+    { t: "Florida Man Sues Walmart After Coconut Falls From Outdoor Display",
+      s: "Suit seeks $3.2M in damages and one (1) replacement coconut. Walmart's lawyers are reportedly \"thinking about it.\"",
+      src: "Orlando Observer" },
+    { t: "Florida Man Rides Manatee Down Intracoastal, Cited for Reckless Sea-Cow Operation",
+      s: "FWC says it's a first-of-its-kind charge. The manatee, named Gerald, was unharmed and is in stable condition.",
+      src: "Gator Gazette" },
+    { t: "Florida Woman Marries Tree in Sarasota, Files for Joint Tax Return",
+      s: "The IRS has yet to respond. The tree, a 60-year-old live oak, declined to comment.",
+      src: "Naples Nightly" },
+    { t: "Florida Man Charged After Bringing Pet Iguana Into Magic Kingdom",
+      s: "The iguana, named Sir Reginald, was wearing a Mickey ear hat. Disney security called it \"on-brand but not allowed.\"",
+      src: "Orlando Observer" },
+    { t: "Florida Man Refuses to Evacuate Hurricane, Surfs Storm Surge in Office Chair",
+      s: "Posted the whole thing to TikTok. Survived. Got 2.4M views and a citation for \"reckless flotation.\"",
+      src: "Panhandle Press" },
+    { t: "Florida Man Crashes Golf Cart Through Drive-Thru, Demands McChicken",
+      s: "Cart was registered to a retirement community in The Villages. He paid in nickels.",
+      src: "Miami Mirror" },
+    { t: "Florida Man Found Wearing Lobster Bib in Stranger's Aboveground Pool",
+      s: "Was holding a wine glass full of ranch dressing. Refused to leave until the homeowner served crackers.",
+      src: "Coastal Courier" },
+    { t: "Florida Woman Hosts Yard Sale for Ex-Husband's Belongings — Charges Him Admission",
+      s: "$5 at the door. He paid. He bought back his own bowling trophy for $40.",
+      src: "Sunshine Daily" },
+    { t: "Florida Man Steals Bulldozer to \"Make a Shortcut to Wendy's\"",
+      s: "Shortcut was through three lanes of traffic and one Sherwin-Williams. He got the Baconator combo.",
+      src: "Jacksonville Journal" },
+    { t: "Florida Man Identifies as Pelican on Voter Registration Form",
+      s: "Supervisor of Elections rejected it but noted the handwriting was \"impressively beak-like.\"",
+      src: "Key West Chronicle" },
+    { t: "Florida Man Caught Painting \"FOR SALE\" on Stranger's Cow",
+      s: "Cow was already for sale. Owner was \"flattered but also pressing charges.\"",
+      src: "Everglades Examiner" },
+    { t: "Florida Man Mistakes Burmese Python for Garden Hose, Hospitalized",
+      s: "The python is fine. Florida Man, in stable condition, says he \"should've known when it wouldn't unspool.\"",
+      src: "Naples Nightly" },
+    { t: "Florida Woman Calls 911 to Settle Pickleball Dispute",
+      s: "Caller insisted the line judge was \"compromised.\" Officers ruled the ball out. She has appealed.",
+      src: "Tampa Bay Tribune" },
+    { t: "Florida Man Tries to Trade Beanie Baby Collection for Boat at Boat Show",
+      s: "Offered a binder of 1998 Princess Diana bears. Boat dealer countered with \"absolutely not.\"",
+      src: "Pensacola Post" },
+    { t: "Florida Man Charged After Throwing Live Crab at Bouncer in Daytona",
+      s: "Crab was unharmed. Bouncer was unimpressed. Florida Man pleaded \"crustacean self-defense.\"",
+      src: "Panhandle Press" },
+    { t: "Florida Man Surrenders to Police at 7-Eleven, Citing Lukewarm Slurpee Machine",
+      s: "Turned himself in on outstanding warrants. Officers gave him a fresh Slurpee on the way to booking.",
+      src: "Orlando Observer" },
+    { t: "Florida Woman Performs Wedding Ceremony at Outback Steakhouse, Couple Sober",
+      s: "Ceremony took place at table 12 between the Bloomin' Onion and the entrée. Officiant ordained on Tuesday.",
+      src: "Sunshine Daily" },
+    { t: "Florida Man Wins Sandcastle Contest Then Lists Castle on Zillow",
+      s: "Asking $429,000, \"motivated seller.\" Tide came in before any showings. Listing now \"pending.\"",
+      src: "Coastal Courier" },
+    { t: "Florida Man Tries To Outrun Police on Lime Scooter, Battery Dies",
+      s: "He'd been at 12% when the chase began. Arrested two blocks later. Scooter abandoned, still beeping.",
+      src: "Miami Mirror" },
+    { t: "Florida Man Steals Statue of Liberty Replica From Mini Golf Course",
+      s: "It was on hole 7. He was found sleeping next to it in a Sonic parking lot. Both returned to play.",
+      src: "Gator Gazette" },
+    { t: "Florida Woman Brings Emotional-Support Capybara Through TSA",
+      s: "Cleared security. Capybara, named Doug, ate a Cinnabon at Gate B14. Flight crew let him board.",
+      src: "Tampa Bay Tribune" },
+    { t: "Florida Man Caught Selling Boiled Peanuts Out of Trunk on Toll Road",
+      s: "Was operating between exits 232 and 234. Health Dept. issued a fine. Reviews were \"actually pretty good.\"",
+      src: "Jacksonville Journal" },
+    { t: "Florida Man Builds Treehouse in Live Oak, Claims Squatter's Rights",
+      s: "Tree is in a public park. City attorney says the doctrine \"does not apply to trees, sir.\"",
+      src: "Everglades Examiner" },
+    { t: "Florida Man Drives Through Hurricane Just to Beat Lunch Rush at Chick-fil-A",
+      s: "Said \"the line is usually crazy.\" Got there in 12 minutes. Was the only customer. They were closed.",
+      src: "Naples Nightly" },
+    { t: "Florida Woman Caught Smuggling Live Lobster in Stroller at Disney",
+      s: "Lobster was in a Baby Björn. Cast Members described the scene as \"surprisingly tender.\"",
+      src: "Orlando Observer" },
+    { t: "Florida Man Demands Refund From Atlantic Ocean for \"Too Salty\"",
+      s: "Filed complaint with the Better Business Bureau. The Atlantic Ocean did not respond by press time.",
+      src: "Key West Chronicle" },
+    { t: "Florida Man Steals Cheese Wheel From Costco, Rolls It Home Six Miles",
+      s: "$48 wheel of Manchego. Made it 5.8 miles before a deputy gave him a ride for the last 0.2.",
+      src: "Sunshine Daily" },
+  ];
+
+  const PROMOS = ["Trending in FL", "Sponsored", "Hot takes", "Editor's pick", "Promoted"];
+  const PREFIXES = ["", "UPDATE: ", "BREAKING: ", "MUST READ: ", "DEVELOPING: "];
 
   const grid = document.getElementById("grid");
   const status = document.getElementById("status");
 
-  let after = null;     // Reddit pagination cursor
-  let loaded = 0;       // absolute count, for promo chip indexing
+  let loaded = 0;       // absolute count of rendered cards
   let loading = false;
-  let exhausted = false;
   let io = null;
   let sentinel = null;
 
-  // Promoted-ish chips that occasionally appear in real Taboola feeds.
-  // Florida-flavored to fit the vibe.
-  const PROMOS = ["Trending in FL", "Sponsored", "Hot takes", "Editor's pick", "Promoted"];
   function maybePromo(i) {
     return (i % 5 === 4) ? PROMOS[(i / 5 | 0) % PROMOS.length] : null;
   }
@@ -160,41 +249,39 @@
     return (d / 365 | 0) + "y ago";
   }
 
-  function proxyImg(url, w = 360, h = 270) {
-    if (!url) return null;
-    return PROXY + encodeURIComponent(url) +
-      `&w=${w}&h=${h}&fit=cover&a=attention&output=webp&q=80`;
+  // Small deterministic hash — gives every story a stable seed for image,
+  // age, score, and comment count without storing those fields in STORIES.
+  function hash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+    return Math.abs(h);
   }
 
-  // Reddit post -> normalized article. Skips NSFW/stickied/self-only-text
-  // entries and anything without a usable image.
-  function normalize(post) {
-    const d = post.data || {};
-    if (d.over_18 || d.stickied) return null;
+  function proxyImg(url, w = 360, h = 270) {
+    return PROXY + encodeURIComponent(url) +
+      `&w=${w}&h=${h}&fit=cover&output=webp&q=80`;
+  }
 
-    let img = null;
-    const previews = d.preview?.images;
-    if (Array.isArray(previews) && previews.length) {
-      img = previews[0].source?.url || null;
-    }
-    if (!img && typeof d.thumbnail === "string" && d.thumbnail.startsWith("http")) {
-      img = d.thumbnail;
-    }
-    if (!img) return null;  // text-only posts skipped — list needs thumbs
-
-    const summary = (d.selftext || "").trim().replace(/\s+/g, " ").slice(0, 180);
-    const linkUrl = (d.url && !d.url.startsWith("/")) ? d.url : `https://www.reddit.com${d.permalink}`;
+  // Pick the next story for absolute index i. Cycles through STORIES, with
+  // a prefix that rotates each full cycle so identical titles never appear
+  // back-to-back on the same screen.
+  function storyAt(i) {
+    const story = STORIES[i % STORIES.length];
+    const cycle = (i / STORIES.length) | 0;
+    const prefix = PREFIXES[cycle % PREFIXES.length];
+    const seed = hash(story.t) + cycle * 7919;
+    const ageMin = (seed % 1440) + cycle * 30;   // newer cycles → "older" headlines
+    const score = 200 + (seed % 8000) - cycle * 50;
+    const created = Date.now() / 1000 - ageMin * 60;
 
     return {
-      title: d.title || "Untitled",
-      summary,
-      img,
-      source: "r/" + (d.subreddit || "FloridaMan"),
-      domain: d.domain || "",
-      created: d.created_utc,
-      score: d.score || 0,
-      comments: d.num_comments || 0,
-      url: linkUrl,
+      title: prefix + story.t,
+      summary: story.s,
+      img: `https://picsum.photos/seed/fm-${seed}/360/270`,
+      source: story.src,
+      created,
+      score: Math.max(12, score),
+      url: LANDING,
     };
   }
 
@@ -281,47 +368,32 @@
   }
 
   async function loadNextPage() {
-    if (loading || exhausted) return;
+    if (loading) return;
     loading = true;
 
-    const skel = skeletons(6);
+    const skel = skeletons(PAGE_SIZE);
     if (sentinel) grid.insertBefore(skel, sentinel);
     else grid.appendChild(skel);
 
     const startIndex = loaded;
-    status.textContent = `log: fetching after=${after || "(start)"}`;
+    status.textContent = `log: composing page (start=${startIndex})`;
 
-    try {
-      const r = await fetch(API(after), { headers: { "accept": "application/json" } });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const data = await r.json();
-      const children = data?.data?.children || [];
-      after = data?.data?.after || null;
+    // Simulated network delay so skeletons flash briefly — feels like a real
+    // infinite-scroll fetch. 250–550ms is the sweet spot.
+    await new Promise(res => setTimeout(res, 250 + Math.random() * 300));
 
-      clearSkeletons();
-      let rendered = 0;
-      for (const post of children) {
-        const article = normalize(post);
-        if (!article) continue;
-        const card = renderCard(article, startIndex + rendered);
-        if (sentinel) grid.insertBefore(card, sentinel);
-        else grid.appendChild(card);
-        rendered++;
-      }
-      loaded += rendered;
-
-      if (!after) {
-        exhausted = true;
-        showEnd();
-      }
-      status.textContent = `log: ok — ${loaded} stories (rendered ${rendered}/${children.length})`;
-    } catch (e) {
-      clearSkeletons();
-      showError(e?.message || String(e));
-      status.textContent = "log: fetch error: " + (e?.message || e);
-    } finally {
-      loading = false;
+    clearSkeletons();
+    for (let i = 0; i < PAGE_SIZE; i++) {
+      const absIndex = startIndex + i;
+      const article = storyAt(absIndex);
+      const card = renderCard(article, absIndex);
+      if (sentinel) grid.insertBefore(card, sentinel);
+      else grid.appendChild(card);
     }
+    loaded += PAGE_SIZE;
+    status.textContent = `log: ok — ${loaded} stories rendered`;
+
+    loading = false;
   }
 
   function showError(msg) {
@@ -330,22 +402,6 @@
     div.textContent = "Couldn't load more — " + msg;
     if (sentinel) grid.insertBefore(div, sentinel);
     else grid.appendChild(div);
-  }
-
-  function showEnd() {
-    if (sentinel) sentinel.remove();
-    sentinel = null;
-    if (io) { io.disconnect(); io = null; }
-    const end = document.createElement("div");
-    end.className = "end";
-    end.innerHTML = `You're all caught up.<br><button class="more" type="button">Start over</button>`;
-    end.querySelector("button").addEventListener("click", () => {
-      after = null; loaded = 0; exhausted = false;
-      grid.innerHTML = "";
-      mountSentinel();
-      loadNextPage();
-    });
-    grid.appendChild(end);
   }
 
   function mountSentinel() {
