@@ -122,6 +122,9 @@
     <div class="status" id="status">log: ready</div>
   </div>
 
+<!-- Server inlines the latest show_headlines result here at resource-read time -->
+<script type="application/json" id="headlines-payload">__HEADLINES_PAYLOAD__</script>
+
 <script type="module">
   import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
@@ -305,23 +308,40 @@
     return null;
   }
 
+  // --- Read articles inlined in the resource HTML --------------------------
+  function readInlinedPayload() {
+    const el = document.getElementById("headlines-payload");
+    if (!el) return null;
+    const text = (el.textContent || "").trim();
+    // Server didn't substitute the placeholder — pretend we got nothing.
+    if (!text || text.startsWith("__")) return null;
+    try { return JSON.parse(text); } catch { return null; }
+  }
+
   // --- Connect --------------------------------------------------------------
   showSkeletons(5);
 
-  const app = new App({ name: "headlines", version: "2.0.0" });
+  const inlined = readInlinedPayload();
+  if (inlined) {
+    applyPayload(inlined);
+    setStatus("log: rendered from inlined payload");
+  }
+
+  const app = new App({ name: "headlines", version: "2.1.0" });
   app.onerror = (e) => setStatus("log: error: " + (e?.message || e));
 
+  // Optional: if the host *does* deliver the tool result via notification,
+  // honor it as a fallback (the inlined payload still wins via `rendered`).
   app.ontoolresult = (params) => {
+    if (rendered) return;
     setStatus("log: tool-result received");
     const payload = extractPayload(params);
     if (payload) applyPayload(payload);
   };
 
-  // Some hosts pass the data via tool-input instead. Try both.
   app.ontoolinput = (params) => {
     const args = (params?.arguments && typeof params.arguments === "object")
       ? params.arguments : params;
-    // If args carry a category/query, reflect in the tag while we wait.
     const label =
       args?.query ? `Search: "${args.query}"` :
       args?.category ? capitalize(args.category) :
@@ -332,19 +352,18 @@
 
   app.connect();
 
-  // Safety net: if neither tool-result nor tool-input lands within a few
-  // seconds, fall back to a friendly empty state so the user isn't stuck
-  // on skeletons forever.
+  // Last-ditch fallback if nothing rendered (placeholder wasn't substituted
+  // AND no notification arrived).
   setTimeout(() => {
     if (!rendered) {
       showBannerHTML(
-        "Couldn't receive headlines from the server. " +
-        "Ask Toto to show the news again, or check that NEWSAPI_KEY is set.",
+        "Couldn't load headlines. Ask Toto to show the news again, " +
+        "or check that <code>NEWSAPI_KEY</code> is set on the server.",
         true
       );
-      setStatus("log: timeout — no tool-result/tool-input received");
+      setStatus("log: timeout — no payload received");
     }
-  }, 12000);
+  }, 8000);
 </script>
 </body>
 </html>

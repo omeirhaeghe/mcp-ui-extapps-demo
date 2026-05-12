@@ -983,11 +983,20 @@ async def submit_age_check(
 # to show_headlines mounts a fresh widget with the new results.
 # ---------------------------------------------------------------------------
 
+import json as _json
+
 _NEWSAPI_BASE = "https://newsapi.org/v2"
 _NEWSAPI_CATEGORIES = {
     "general", "business", "technology", "science",
     "health", "sports", "entertainment",
 }
+
+# Most recent show_headlines result, injected into the resource HTML at
+# read time so the widget can render without depending on the host
+# routing tool-result/tool-input notifications back to the iframe.
+# Global is acceptable for a demo server; for real multi-user use, key
+# this by session.
+_last_headlines_payload: dict | None = None
 
 
 async def _fetch_newsapi(category: str, query: str, page_size: int) -> dict:
@@ -1087,7 +1096,16 @@ async def _fetch_newsapi(category: str, query: str, page_size: int) -> dict:
     },
 )
 def headlines_app() -> str:
-    return _load_app("26-headlines.html")
+    """Serve the headlines widget HTML with the most-recent show_headlines
+    result inlined as a <script type="application/json"> tag. The widget
+    parses it on load — no host notification routing required."""
+    template = _load_app("26-headlines.html")
+    payload = _last_headlines_payload or {
+        "ok": True, "articles": [], "category": "", "query": "", "total_results": 0
+    }
+    # Escape `</` inside the JSON to keep it safe inside a script tag.
+    inlined = _json.dumps(payload).replace("</", "<\\/")
+    return template.replace("__HEADLINES_PAYLOAD__", inlined, 1)
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
@@ -1095,12 +1113,14 @@ async def show_headlines(
     category: str = "general",
     query: str = "",
     page_size: int = 20,
-) -> dict:
+) -> str:
     """Render a live news feed from NewsAPI.
 
-    Fetches NewsAPI server-side and returns the articles inline so the
-    widget can render them on mount. To change category or search,
-    invoke show_headlines again — each call mounts a fresh widget.
+    Fetches articles server-side and caches them on the server so the
+    headlines widget can render them on mount without depending on the
+    host to route the tool result back to the iframe. To change category
+    or search, invoke show_headlines again — each call mounts a fresh
+    widget.
 
     Args:
         category: One of general / business / technology / science /
@@ -1110,9 +1130,17 @@ async def show_headlines(
             /top-headlines to /everything and filters by keyword.
         page_size: 1-100, clamped server-side. Defaults to 20.
     """
+    global _last_headlines_payload
     if category not in _NEWSAPI_CATEGORIES:
         category = "general"
-    return await _fetch_newsapi(category=category, query=query, page_size=page_size)
+    _last_headlines_payload = await _fetch_newsapi(
+        category=category, query=query, page_size=page_size
+    )
+    if not _last_headlines_payload.get("ok"):
+        return f"Headlines error: {_last_headlines_payload.get('error') or 'unknown'}"
+    n = len(_last_headlines_payload.get("articles") or [])
+    label = f'"{query}"' if query else category
+    return f"Showing {n} {label} headlines."
 
 
 if __name__ == "__main__":
