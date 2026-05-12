@@ -32,74 +32,74 @@
     .sponsored::before { content:""; width:6px; height:6px; border-radius:999px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
 
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+    .list { display:flex; flex-direction:column; gap:10px; }
 
-    .card { position:relative; background: var(--card);
-      border:1px solid var(--border); border-radius:12px; overflow:hidden;
-      box-shadow: var(--shadow); cursor:pointer; text-align:left;
-      transition: transform .25s cubic-bezier(.2,.7,.2,1),
-                  box-shadow .25s cubic-bezier(.2,.7,.2,1),
-                  border-color .2s ease; }
-    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift);
-      border-color: transparent; }
+    .card { position:relative; display:flex; gap:12px; align-items:stretch;
+      background: var(--card); border:1px solid var(--border); border-radius:12px;
+      overflow:hidden; box-shadow: var(--shadow); cursor:pointer; text-align:left;
+      padding:0; width:100%; font: inherit; color: inherit;
+      transition: transform .2s cubic-bezier(.2,.7,.2,1),
+                  box-shadow .2s cubic-bezier(.2,.7,.2,1),
+                  border-color .2s ease, background .2s ease; }
+    .card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift);
+      border-color: transparent; background: var(--card); }
     .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    .thumb { position:relative; width:100%; aspect-ratio: 16 / 9;
-      background: var(--skel); overflow:hidden; }
+    .thumb { position:relative; flex: 0 0 132px; aspect-ratio: 4 / 3;
+      background: var(--skel); overflow:hidden; align-self:stretch; }
+    @media (max-width: 420px) { .thumb { flex-basis: 104px; } }
     .thumb img { width:100%; height:100%; object-fit:cover; display:block;
       opacity:0; transition: opacity .35s ease, transform .6s cubic-bezier(.2,.7,.2,1); }
     .thumb img.loaded { opacity:1; }
-    .card:hover .thumb img.loaded { transform: scale(1.05); }
+    .card:hover .thumb img.loaded { transform: scale(1.06); }
     .thumb .fallback { position:absolute; inset:0; display:flex; align-items:center;
-      justify-content:center; font-size:32px; color: var(--muted);
+      justify-content:center; font-size:28px; color: var(--muted);
       background: linear-gradient(135deg, var(--skel), var(--chip)); }
-    .src-chip { position:absolute; left:8px; bottom:8px; max-width: calc(100% - 16px);
-      padding:3px 8px; border-radius:6px; background: rgba(0,0,0,.65);
-      color:#fff; font-size:10px; font-weight:600; letter-spacing:.02em;
-      backdrop-filter: blur(6px); overflow:hidden; text-overflow:ellipsis;
-      white-space:nowrap; }
 
-    .body { padding:10px 12px 12px; }
-    .headline { margin:0 0 6px; font-size:14px; font-weight:600; line-height:1.3;
-      display:-webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    .body { flex:1; min-width:0; padding:10px 12px 10px 4px;
+      display:flex; flex-direction:column; justify-content:space-between; gap:6px; }
+    .headline { margin:0; font-size:14px; font-weight:600; line-height:1.35;
+      display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
       overflow:hidden; }
     .summary { margin:0; font-size:12px; color: var(--muted); line-height:1.4;
       display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
       overflow:hidden; }
-    .meta { margin-top:8px; display:flex; align-items:center; gap:6px;
+    .meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
       color: var(--muted); font-size:11px; font-variant-numeric: tabular-nums; }
+    .meta .src { font-weight:600; color: var(--fg); max-width: 14ch;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .meta .dot { width:3px; height:3px; border-radius:999px; background: currentColor;
       opacity:.6; }
     .meta .promo { color: var(--accent); font-weight:600; }
 
     /* Skeleton placeholders */
-    .skeleton { background: var(--card); border:1px solid var(--border);
-      border-radius:12px; overflow:hidden; }
-    .skeleton .thumb { background: linear-gradient(90deg, var(--skel) 0%, var(--chip) 50%, var(--skel) 100%);
+    .skeleton { display:flex; gap:12px; background: var(--card);
+      border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .skeleton .thumb { flex: 0 0 132px; aspect-ratio: 4 / 3;
+      background: linear-gradient(90deg, var(--skel) 0%, var(--chip) 50%, var(--skel) 100%);
       background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-    .skeleton .sk-line { height:10px; background: var(--skel); border-radius:4px;
-      margin:8px 12px; }
-    .skeleton .sk-line.short { width:60%; }
+    @media (max-width: 420px) { .skeleton .thumb { flex-basis: 104px; } }
+    .skeleton .sk-body { flex:1; padding:12px 12px 12px 4px;
+      display:flex; flex-direction:column; gap:8px; justify-content:center; }
+    .skeleton .sk-line { height:10px; background: var(--skel); border-radius:4px; }
+    .skeleton .sk-line.short { width:55%; }
+    .skeleton .sk-line.tiny  { width:35%; height:8px; }
     @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
 
-    .sentinel { grid-column: 1 / -1; padding:18px 0;
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      color: var(--muted); font-size:12px; }
+    .sentinel { padding:18px 0; display:flex; align-items:center;
+      justify-content:center; gap:8px; color: var(--muted); font-size:12px; }
     .spinner { width:14px; height:14px; border:2px solid var(--border);
       border-top-color: var(--accent); border-radius:999px;
       animation: spin .9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg) } }
 
-    .end { grid-column: 1 / -1; text-align:center; padding:18px 8px 6px;
-      color: var(--muted); font-size:12px; }
+    .end { text-align:center; padding:18px 8px 6px; color: var(--muted); font-size:12px; }
     .end .more { display:inline-block; margin-top:6px; padding:7px 14px;
       border-radius:999px; border:1px solid var(--border); background: var(--card);
       color: var(--fg); cursor:pointer; font:600 12px inherit; }
     .end .more:hover { background: var(--bg); }
 
-    .err { grid-column: 1 / -1; padding:14px; text-align:center;
-      color:#dc2626; font-size:13px; }
+    .err { padding:14px; text-align:center; color:#dc2626; font-size:13px; }
 
     .status { color: var(--muted); font-size:11px; padding: 8px 4px 0;
       font-family: ui-monospace, monospace; min-height:14px; }
@@ -109,45 +109,48 @@
   <div class="wrap">
     <div class="header">
       <div class="title">
-        <h1>Latest news</h1>
-        <p>Scroll for more. Tap any story to open the source.</p>
+        <h1>🐊 Florida Man Wire</h1>
+        <p>Live from the Sunshine State. Scroll for more.</p>
       </div>
-      <span class="sponsored">Around the web</span>
+      <span class="sponsored">Only in Florida</span>
     </div>
 
-    <div class="grid" id="grid"></div>
+    <div class="list" id="grid"></div>
     <div class="status" id="status">log: ready</div>
   </div>
 
 <script type="module">
   import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
-  const API = "https://api.spaceflightnewsapi.net/v4/articles/";
-  const PAGE_SIZE = 12;
+  // raw_json=1 disables HTML-entity encoding in image URLs so they can
+  // be used straight from the iframe.
+  const SUBREDDITS = ["FloridaMan", "FloridaManNews", "nottheonion"];
+  const PAGE_SIZE = 15;
   const PROXY = "https://wsrv.nl/?url=";
+  const API = (after) =>
+    `https://www.reddit.com/r/${SUBREDDITS.join("+")}/hot.json` +
+    `?limit=${PAGE_SIZE}&raw_json=1${after ? `&after=${after}` : ""}`;
 
   const grid = document.getElementById("grid");
   const status = document.getElementById("status");
 
-  let offset = 0;
+  let after = null;     // Reddit pagination cursor
+  let loaded = 0;       // absolute count, for promo chip indexing
   let loading = false;
   let exhausted = false;
-  let total = Infinity;
   let io = null;
   let sentinel = null;
 
   // Promoted-ish chips that occasionally appear in real Taboola feeds.
-  // Purely cosmetic — keeps things believable as an "endless roll".
-  const PROMOS = ["Promoted", "Editor's pick", "Trending", "Sponsored", "Featured"];
+  // Florida-flavored to fit the vibe.
+  const PROMOS = ["Trending in FL", "Sponsored", "Hot takes", "Editor's pick", "Promoted"];
   function maybePromo(i) {
-    // Roughly every 5th card gets a chip, deterministic per absolute index.
     return (i % 5 === 4) ? PROMOS[(i / 5 | 0) % PROMOS.length] : null;
   }
 
-  function timeAgo(iso) {
-    const then = new Date(iso).getTime();
-    if (!Number.isFinite(then)) return "";
-    const s = Math.max(1, (Date.now() - then) / 1000 | 0);
+  function timeAgo(unixSec) {
+    if (!Number.isFinite(unixSec)) return "";
+    const s = Math.max(1, Date.now() / 1000 - unixSec | 0);
     if (s < 60) return s + "s ago";
     const m = s / 60 | 0;       if (m < 60) return m + "m ago";
     const h = m / 60 | 0;       if (h < 24) return h + "h ago";
@@ -157,10 +160,42 @@
     return (d / 365 | 0) + "y ago";
   }
 
-  function proxyImg(url, w = 480, h = 270) {
+  function proxyImg(url, w = 360, h = 270) {
     if (!url) return null;
     return PROXY + encodeURIComponent(url) +
       `&w=${w}&h=${h}&fit=cover&a=attention&output=webp&q=80`;
+  }
+
+  // Reddit post -> normalized article. Skips NSFW/stickied/self-only-text
+  // entries and anything without a usable image.
+  function normalize(post) {
+    const d = post.data || {};
+    if (d.over_18 || d.stickied) return null;
+
+    let img = null;
+    const previews = d.preview?.images;
+    if (Array.isArray(previews) && previews.length) {
+      img = previews[0].source?.url || null;
+    }
+    if (!img && typeof d.thumbnail === "string" && d.thumbnail.startsWith("http")) {
+      img = d.thumbnail;
+    }
+    if (!img) return null;  // text-only posts skipped — list needs thumbs
+
+    const summary = (d.selftext || "").trim().replace(/\s+/g, " ").slice(0, 180);
+    const linkUrl = (d.url && !d.url.startsWith("/")) ? d.url : `https://www.reddit.com${d.permalink}`;
+
+    return {
+      title: d.title || "Untitled",
+      summary,
+      img,
+      source: "r/" + (d.subreddit || "FloridaMan"),
+      domain: d.domain || "",
+      created: d.created_utc,
+      score: d.score || 0,
+      comments: d.num_comments || 0,
+      url: linkUrl,
+    };
   }
 
   function skeletons(n) {
@@ -171,8 +206,11 @@
       s.dataset.role = "skel";
       s.innerHTML = `
         <div class="thumb"></div>
-        <div class="sk-line"></div>
-        <div class="sk-line short"></div>`;
+        <div class="sk-body">
+          <div class="sk-line"></div>
+          <div class="sk-line short"></div>
+          <div class="sk-line tiny"></div>
+        </div>`;
       frag.appendChild(s);
     }
     return frag;
@@ -188,33 +226,34 @@
     card.dataset.url = article.url || "";
 
     const promo = maybePromo(absIndex);
-    const ago = timeAgo(article.published_at);
-    const src = article.news_site || "Unknown";
-
-    const imgSrc = proxyImg(article.image_url);
+    const ago = timeAgo(article.created);
+    const imgSrc = proxyImg(article.img);
 
     card.innerHTML = `
       <div class="thumb">
         ${imgSrc
           ? `<img alt="" loading="lazy" referrerpolicy="no-referrer" decoding="async">
-             <div class="fallback" style="display:none">🛰️</div>`
-          : `<div class="fallback">🛰️</div>`}
-        <div class="src-chip"></div>
+             <div class="fallback" style="display:none">🐊</div>`
+          : `<div class="fallback">🐊</div>`}
       </div>
       <div class="body">
         <p class="headline"></p>
         <p class="summary"></p>
         <div class="meta">
           ${promo ? `<span class="promo">${promo}</span><span class="dot"></span>` : ""}
-          <span class="ago"></span>
+          <span class="src"></span><span class="dot"></span>
+          <span class="ago"></span><span class="dot"></span>
+          <span class="score"></span>
         </div>
       </div>
     `;
 
-    card.querySelector(".src-chip").textContent = src;
-    card.querySelector(".headline").textContent = article.title || "Untitled";
-    card.querySelector(".summary").textContent = article.summary || "";
+    card.querySelector(".headline").textContent = article.title;
+    card.querySelector(".summary").textContent = article.summary
+      || `From ${article.domain || article.source}`;
+    card.querySelector(".src").textContent = article.source;
     card.querySelector(".ago").textContent = ago;
+    card.querySelector(".score").textContent = `▲ ${article.score}`;
 
     const img = card.querySelector("img");
     if (img) {
@@ -232,11 +271,10 @@
   }
 
   async function openArticle(article) {
-    const url = article.url;
-    if (!url) return;
+    if (!article.url) return;
     try {
-      await app.openLink({ url });
-      status.textContent = `log: openLink ok — ${article.news_site || "source"}`;
+      await app.openLink({ url: article.url });
+      status.textContent = `log: openLink ok — ${article.source}`;
     } catch (e) {
       status.textContent = "log: openLink error: " + (e?.message || e);
     }
@@ -246,35 +284,37 @@
     if (loading || exhausted) return;
     loading = true;
 
-    // Push skeletons just before the sentinel for visual continuity.
-    const skel = skeletons(PAGE_SIZE);
+    const skel = skeletons(6);
     if (sentinel) grid.insertBefore(skel, sentinel);
     else grid.appendChild(skel);
 
-    const startIndex = offset;
-    status.textContent = `log: fetching offset=${offset}`;
+    const startIndex = loaded;
+    status.textContent = `log: fetching after=${after || "(start)"}`;
 
     try {
-      const url = `${API}?limit=${PAGE_SIZE}&offset=${offset}`;
-      const r = await fetch(url, { headers: { "accept": "application/json" } });
+      const r = await fetch(API(after), { headers: { "accept": "application/json" } });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const data = await r.json();
-      total = typeof data.count === "number" ? data.count : total;
+      const children = data?.data?.children || [];
+      after = data?.data?.after || null;
 
       clearSkeletons();
-      const results = Array.isArray(data.results) ? data.results : [];
-      results.forEach((a, i) => {
-        const card = renderCard(a, startIndex + i);
+      let rendered = 0;
+      for (const post of children) {
+        const article = normalize(post);
+        if (!article) continue;
+        const card = renderCard(article, startIndex + rendered);
         if (sentinel) grid.insertBefore(card, sentinel);
         else grid.appendChild(card);
-      });
+        rendered++;
+      }
+      loaded += rendered;
 
-      offset += results.length;
-      if (results.length === 0 || offset >= total) {
+      if (!after) {
         exhausted = true;
         showEnd();
       }
-      status.textContent = `log: ok — ${offset}/${total}`;
+      status.textContent = `log: ok — ${loaded} stories (rendered ${rendered}/${children.length})`;
     } catch (e) {
       clearSkeletons();
       showError(e?.message || String(e));
@@ -300,7 +340,7 @@
     end.className = "end";
     end.innerHTML = `You're all caught up.<br><button class="more" type="button">Start over</button>`;
     end.querySelector("button").addEventListener("click", () => {
-      offset = 0; exhausted = false; total = Infinity;
+      after = null; loaded = 0; exhausted = false;
       grid.innerHTML = "";
       mountSentinel();
       loadNextPage();

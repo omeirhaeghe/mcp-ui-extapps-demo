@@ -950,9 +950,10 @@ async def submit_age_check(
 
 
 # ---------------------------------------------------------------------------
-# 26. News roll — Taboola-style endless feed backed by the (no-auth)
-# Spaceflight News API. Thumbnails route through the wsrv.nl image proxy
-# so a single resourceDomains entry covers every upstream news site.
+# 26. News roll — Taboola-style endless list of Florida Man / weird news,
+# pulled live from Reddit (r/FloridaMan + r/FloridaManNews + r/nottheonion).
+# Thumbnails route through the wsrv.nl image proxy so the CSP allowlist
+# stays tight regardless of which CDN Reddit's previews land on.
 # ---------------------------------------------------------------------------
 
 @mcp.resource(
@@ -967,7 +968,7 @@ async def submit_age_check(
                     "https://wsrv.nl",
                 ],
                 "connectDomains": [
-                    "https://api.spaceflightnewsapi.net",
+                    "https://www.reddit.com",
                 ],
             },
         }
@@ -979,9 +980,10 @@ def news_roll_app() -> str:
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://news-roll"}})
 async def show_news_roll() -> str:
-    """Render an endless, Taboola-style news roll. The widget paginates the
-    Spaceflight News API on scroll and opens each story via ui/open-link."""
-    return "News roll rendered. Scroll for more stories."
+    """Render an endless, Taboola-style Florida-Man news roll. Paginates
+    Reddit's public JSON feed (r/FloridaMan + r/FloridaManNews + r/nottheonion)
+    on scroll and opens each story via ui/open-link."""
+    return "Florida Man Wire rendered. Scroll for more weirdness."
 
 
 if __name__ == "__main__":
