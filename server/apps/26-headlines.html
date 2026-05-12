@@ -7,14 +7,14 @@
     :root { color-scheme: light dark;
       --fg:#0f172a; --muted:#64748b; --bg:#ffffff; --card:#ffffff;
       --border:#e5e7eb; --accent:#0ea5e9; --accent-2:#6366f1;
-      --skel:#eef0f3; --chip:#f1f5f9; --chip-active:#0ea5e9;
+      --skel:#eef0f3; --chip:#f1f5f9;
       --shadow: 0 1px 2px rgba(15,23,42,.04), 0 4px 14px rgba(15,23,42,.06);
       --shadow-lift: 0 2px 6px rgba(15,23,42,.08), 0 14px 30px rgba(14,165,233,.18);
       --bad:#dc2626; }
     @media (prefers-color-scheme: dark) { :root {
       --fg:#e5e7eb; --muted:#94a3b8; --bg:#0b0c0f; --card:#14161b;
       --border:#23262d; --accent:#38bdf8; --accent-2:#818cf8;
-      --skel:#1c1f26; --chip:#1c2230; --chip-active:#38bdf8;
+      --skel:#1c1f26; --chip:#1c2230;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.35);
       --shadow-lift: 0 2px 6px rgba(0,0,0,.4), 0 14px 30px rgba(56,189,248,.22);
       --bad:#f87171; } }
@@ -23,44 +23,17 @@
       font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
 
     .wrap { padding:16px 14px 22px; }
-    .header { display:flex; align-items:center; justify-content:space-between;
-      margin: 0 4px 12px; gap:12px; }
+    .header { display:flex; align-items:flex-start; justify-content:space-between;
+      margin: 0 4px 14px; gap:12px; flex-wrap:wrap; }
     .title h1 { margin:0; font-size:16px; font-weight:700; letter-spacing:-0.01em; }
     .title p  { margin:2px 0 0; color:var(--muted); font-size:12px; }
-    .sponsored { display:inline-flex; align-items:center; gap:6px;
-      padding:3px 9px; border-radius:999px; background: var(--chip);
-      color: var(--muted); font-size:10px; font-weight:600; letter-spacing:.04em;
-      text-transform:uppercase; border:1px solid var(--border); white-space:nowrap; }
-    .sponsored::before { content:""; width:6px; height:6px; border-radius:999px;
+    .tag { display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px; border-radius:999px; background: var(--chip);
+      color: var(--fg); font-size:11px; font-weight:600;
+      border:1px solid var(--border); white-space:nowrap;
+      text-transform:capitalize; }
+    .tag::before { content:""; width:6px; height:6px; border-radius:999px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
-
-    /* Filter bar */
-    .filters { margin: 0 0 12px; display:flex; flex-direction:column; gap:8px; }
-    .chips { display:flex; gap:6px; overflow-x:auto; padding: 2px 4px 6px;
-      scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-    .chips::-webkit-scrollbar { display:none; }
-    .chip { padding:6px 12px; border-radius:999px; border:1px solid var(--border);
-      background: var(--card); color: var(--fg); font: 600 12px inherit; cursor:pointer;
-      white-space:nowrap; transition: background .15s ease, color .15s ease,
-                                      border-color .15s ease, transform .1s ease; }
-    .chip:hover { background: var(--chip); }
-    .chip.active { background: var(--chip-active); color:#fff; border-color: transparent; }
-    .chip.active:hover { transform: translateY(-1px); }
-
-    .search { position:relative; margin: 0 4px; }
-    .search input { width:100%; padding:9px 36px 9px 34px; box-sizing:border-box;
-      background: var(--bg); border:1px solid var(--border); border-radius:10px;
-      color: var(--fg); font: inherit; font-size:13px; }
-    .search input:focus { outline: 2px solid var(--accent); outline-offset: 0;
-      border-color: transparent; }
-    .search .ic { position:absolute; left:10px; top:50%; transform: translateY(-50%);
-      color: var(--muted); font-size:14px; pointer-events:none; }
-    .search .clear { position:absolute; right:6px; top:50%; transform: translateY(-50%);
-      background: var(--chip); border:0; color: var(--muted); border-radius:999px;
-      width:22px; height:22px; cursor:pointer; font:600 12px inherit;
-      display:none; align-items:center; justify-content:center; padding:0; }
-    .search .clear.visible { display:flex; }
-    .search .clear:hover { color: var(--fg); }
 
     .list { display:flex; flex-direction:column; gap:10px; }
 
@@ -100,8 +73,9 @@
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .meta .dot { width:3px; height:3px; border-radius:999px; background: currentColor;
       opacity:.6; }
+    .meta .open-ic { margin-left:auto; font-size:11px; opacity:.6; }
 
-    /* Skeleton placeholders */
+    /* Skeletons */
     .skeleton { display:flex; gap:12px; background: var(--card);
       border:1px solid var(--border); border-radius:12px; overflow:hidden; }
     .skeleton .thumb { flex: 0 0 132px; aspect-ratio: 4 / 3;
@@ -115,25 +89,20 @@
     .skeleton .sk-line.tiny  { width:35%; height:8px; }
     @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
 
-    .sentinel { padding:18px 0; display:flex; align-items:center;
-      justify-content:center; gap:8px; color: var(--muted); font-size:12px; }
-    .spinner { width:14px; height:14px; border:2px solid var(--border);
-      border-top-color: var(--accent); border-radius:999px;
-      animation: spin .9s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg) } }
-
-    .end { text-align:center; padding:18px 8px 6px; color: var(--muted); font-size:12px; }
+    .footer { text-align:center; padding:14px 8px 4px; color: var(--muted); font-size:11px; }
+    .footer a { color: var(--muted); }
     .empty { text-align:center; padding:36px 16px; color: var(--muted); font-size:13px; }
     .empty .ic { font-size:30px; display:block; margin-bottom:8px; }
 
     .banner { padding:14px 16px; border-radius:10px; border:1px solid var(--border);
-      background: var(--card); margin: 8px 4px; font-size:13px; line-height:1.5; }
+      background: var(--card); margin: 4px 0 8px; font-size:13px; line-height:1.5; }
     .banner.err { border-color: var(--bad); color: var(--bad); background: rgba(220,38,38,.06); }
     .banner code { font-family: ui-monospace, monospace; font-size:12px;
       padding:1px 6px; background: var(--chip); border-radius:4px; color: var(--fg); }
+    .banner a { color: inherit; text-decoration: underline; }
 
     .status { color: var(--muted); font-size:11px; padding: 8px 4px 0;
-      font-family: ui-monospace, monospace; min-height:14px; }
+      font-family: ui-monospace, monospace; min-height:14px; word-break: break-word; }
   </style>
 </head>
 <body>
@@ -141,60 +110,34 @@
     <div class="header">
       <div class="title">
         <h1>Top headlines</h1>
-        <p>Live from NewsAPI. Tap a story to open it.</p>
+        <p id="subtitle">Live from NewsAPI · Tap a story to open it.</p>
       </div>
-      <span class="sponsored">News</span>
-    </div>
-
-    <div class="filters">
-      <div class="chips" id="chips" role="tablist"></div>
-      <div class="search">
-        <span class="ic">🔍</span>
-        <input id="q" type="search" placeholder="Search any topic…" autocomplete="off" spellcheck="false">
-        <button class="clear" id="q-clear" aria-label="Clear search" type="button">×</button>
-      </div>
+      <span class="tag" id="tag">News</span>
     </div>
 
     <div class="list" id="list"></div>
+    <div class="footer">
+      Powered by <a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI.org</a>
+    </div>
     <div class="status" id="status">log: ready</div>
   </div>
 
 <script type="module">
   import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
 
-  const PAGE_SIZE = 20;
   const PROXY = "https://wsrv.nl/?url=";
   const FALLBACK_EMOJI = "📰";
 
-  const CATEGORIES = [
-    { id: "general",       label: "Top" },
-    { id: "business",      label: "Business" },
-    { id: "technology",    label: "Tech" },
-    { id: "science",       label: "Science" },
-    { id: "health",        label: "Health" },
-    { id: "sports",        label: "Sports" },
-    { id: "entertainment", label: "Entertainment" },
-  ];
+  const listEl     = document.getElementById("list");
+  const statusEl   = document.getElementById("status");
+  const tagEl      = document.getElementById("tag");
+  const subtitleEl = document.getElementById("subtitle");
 
-  const listEl   = document.getElementById("list");
-  const statusEl = document.getElementById("status");
-  const chipsEl  = document.getElementById("chips");
-  const qEl      = document.getElementById("q");
-  const qClear   = document.getElementById("q-clear");
-
-  // --- State ----------------------------------------------------------------
-  let category = "general";
-  let query = "";
-  let page = 1;
-  let absIndex = 0;
-  let loading = false;
-  let exhausted = false;
-  let totalResults = 0;
-  let io = null;
-  let sentinel = null;
-  let runToken = 0;   // bump on filter change to cancel in-flight loads
+  let rendered = false;
 
   // --- Helpers --------------------------------------------------------------
+  function setStatus(text) { statusEl.textContent = text; }
+
   function proxyImg(url, w = 360, h = 270) {
     if (!url) return null;
     return PROXY + encodeURIComponent(url) +
@@ -214,39 +157,12 @@
     return (d / 365 | 0) + "y ago";
   }
 
-  function debounce(fn, ms) {
-    let t = null;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-  }
-
-  function setStatus(text) { statusEl.textContent = text; }
-
-  // --- Chips ----------------------------------------------------------------
-  function renderChips() {
-    chipsEl.innerHTML = "";
-    for (const c of CATEGORIES) {
-      const b = document.createElement("button");
-      b.className = "chip" + (c.id === category && !query ? " active" : "");
-      b.type = "button";
-      b.role = "tab";
-      b.textContent = c.label;
-      b.addEventListener("click", () => {
-        if (query) { qEl.value = ""; query = ""; qClear.classList.remove("visible"); }
-        if (c.id === category) return;
-        category = c.id;
-        resetAndLoad();
-      });
-      chipsEl.appendChild(b);
-    }
-  }
-
-  // --- Skeletons ------------------------------------------------------------
-  function skeletons(n) {
-    const frag = document.createDocumentFragment();
+  // --- Initial skeletons (shown while waiting for the tool result) ---------
+  function showSkeletons(n = 5) {
+    listEl.innerHTML = "";
     for (let i = 0; i < n; i++) {
       const s = document.createElement("div");
       s.className = "skeleton";
-      s.dataset.role = "skel";
       s.innerHTML = `
         <div class="thumb"></div>
         <div class="sk-body">
@@ -254,15 +170,11 @@
           <div class="sk-line short"></div>
           <div class="sk-line tiny"></div>
         </div>`;
-      frag.appendChild(s);
+      listEl.appendChild(s);
     }
-    return frag;
-  }
-  function clearSkeletons() {
-    listEl.querySelectorAll('[data-role="skel"]').forEach(n => n.remove());
   }
 
-  // --- Card render ----------------------------------------------------------
+  // --- Cards ---------------------------------------------------------------
   function renderCard(article) {
     const card = document.createElement("button");
     card.className = "card";
@@ -284,6 +196,7 @@
         <div class="meta">
           <span class="src"></span><span class="dot"></span>
           <span class="ago"></span>
+          <span class="open-ic">↗</span>
         </div>
       </div>
     `;
@@ -317,195 +230,121 @@
     }
   }
 
-  // --- Banners --------------------------------------------------------------
-  function showBanner(html, isError = false) {
+  function showBannerHTML(html, isError = false) {
+    listEl.innerHTML = "";
     const div = document.createElement("div");
     div.className = "banner" + (isError ? " err" : "");
-    div.dataset.role = "banner";
     div.innerHTML = html;
     listEl.appendChild(div);
   }
   function showEmpty(text) {
+    listEl.innerHTML = "";
     const div = document.createElement("div");
     div.className = "empty";
-    div.dataset.role = "banner";
     div.innerHTML = `<span class="ic">🗞️</span>${text}`;
     listEl.appendChild(div);
   }
-  function showEnd() {
-    if (sentinel) sentinel.remove();
-    sentinel = null;
-    if (io) { io.disconnect(); io = null; }
-    const end = document.createElement("div");
-    end.className = "end";
-    end.textContent = totalResults
-      ? `That's all ${totalResults} stories.`
-      : `That's all for now.`;
-    listEl.appendChild(end);
-  }
 
-  // --- Data fetch via server tool -------------------------------------------
-  async function fetchPage(p) {
-    const result = await app.callServerTool({
-      name: "fetch_headlines",
-      arguments: { category, query, page: p, page_size: PAGE_SIZE },
-    });
-    // Surface host/server errors with their real text instead of choking
-    // on `JSON.parse("Tool dispatch failed: ...")` style messages.
-    if (result?.isError) {
-      const text = result.content?.[0]?.text || "Unknown tool error.";
-      const err = new Error(text);
-      err.toolError = true;
-      throw err;
-    }
-    if (result?.structuredContent) return result.structuredContent;
-    const text = result?.content?.[0]?.text || "";
-    try {
-      return JSON.parse(text || "{}");
-    } catch {
-      const err = new Error(text || "Empty tool response.");
-      err.toolError = true;
-      throw err;
-    }
-  }
+  // --- Apply payload from show_headlines's result ---------------------------
+  function applyPayload(payload) {
+    if (rendered) return;
+    if (!payload || typeof payload !== "object") return;
+    rendered = true;
 
-  async function loadNextPage() {
-    if (loading || exhausted) return;
-    loading = true;
-    const myToken = runToken;
-
-    const skel = skeletons(Math.min(6, PAGE_SIZE));
-    if (sentinel) listEl.insertBefore(skel, sentinel);
-    else listEl.appendChild(skel);
-
-    setStatus(`log: fetch_headlines page=${page} cat=${category} q="${query}"`);
-
-    let data;
-    try {
-      data = await fetchPage(page);
-    } catch (e) {
-      if (myToken !== runToken) { loading = false; return; }
-      clearSkeletons();
-      showBanner("Couldn't reach the headlines tool — " + (e?.message || e), true);
-      setStatus("log: fetch error: " + (e?.message || e));
-      loading = false;
-      exhausted = true;
-      if (sentinel) { sentinel.remove(); sentinel = null; }
-      return;
-    }
-
-    if (myToken !== runToken) { loading = false; return; }
-    clearSkeletons();
-
-    if (!data.ok) {
-      const msg = data.error || "Unknown error from headlines tool.";
-      const hint = data.code === "no_api_key"
+    if (!payload.ok) {
+      const code = payload.code || "";
+      const msg = payload.error || "Couldn't load headlines.";
+      const hint = code === "no_api_key"
         ? `<br><br>Set <code>NEWSAPI_KEY</code> on the MCP server and reconnect. <a href="https://newsapi.org/register" target="_blank" rel="noopener">Get a free key</a>.`
-        : "";
-      showBanner(msg + hint, true);
-      setStatus("log: api error: " + msg);
-      loading = false;
-      exhausted = true;
-      if (sentinel) { sentinel.remove(); sentinel = null; }
+        : code === "rateLimited"
+          ? "<br><br>NewsAPI free tier is rate-limited (100 requests/day). Try again later."
+          : "";
+      showBannerHTML(`${msg}${hint}`, true);
+      setStatus(`log: error — ${code}: ${msg}`);
       return;
     }
 
-    totalResults = data.total_results ?? totalResults;
-    const articles = Array.isArray(data.articles) ? data.articles : [];
+    const articles = Array.isArray(payload.articles) ? payload.articles : [];
+    const label =
+      payload.query ? `Search: "${payload.query}"` :
+      payload.category ? capitalize(payload.category) :
+      "News";
+    tagEl.textContent = label;
 
-    for (const a of articles) {
-      const card = renderCard(a);
-      if (sentinel) listEl.insertBefore(card, sentinel);
-      else listEl.appendChild(card);
-      absIndex++;
+    const totalText = payload.total_results
+      ? ` · ${payload.total_results.toLocaleString()} results`
+      : "";
+    subtitleEl.textContent = `Live from NewsAPI${totalText} · Tap a story to open it.`;
+
+    if (articles.length === 0) {
+      showEmpty(payload.query
+        ? `No results for "${payload.query}".`
+        : "No headlines available right now.");
+      return;
     }
 
-    page++;
-    if (!data.has_next || absIndex >= totalResults || articles.length === 0) {
-      if (absIndex === 0) {
-        showEmpty(query
-          ? `No results for "${query}".`
-          : "No headlines available right now.");
-      } else {
-        showEnd();
-      }
-      exhausted = true;
-    }
-    setStatus(`log: ok — ${absIndex}/${totalResults} stories`);
-
-    loading = false;
-  }
-
-  // --- Reset + observer wiring ---------------------------------------------
-  function resetAndLoad() {
-    runToken++;
-    page = 1;
-    absIndex = 0;
-    exhausted = false;
-    totalResults = 0;
     listEl.innerHTML = "";
-    renderChips();
-    mountSentinel();
-    loadNextPage();
+    for (const a of articles) listEl.appendChild(renderCard(a));
+    setStatus(`log: ok — ${articles.length} stories rendered`);
   }
 
-  function mountSentinel() {
-    sentinel = document.createElement("div");
-    sentinel.className = "sentinel";
-    sentinel.innerHTML = `<span class="spinner" aria-hidden="true"></span>Loading more…`;
-    listEl.appendChild(sentinel);
-
-    io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) loadNextPage();
-      }
-    }, { rootMargin: "400px 0px" });
-    io.observe(sentinel);
+  function capitalize(s) {
+    return s && s.length ? s[0].toUpperCase() + s.slice(1) : s;
   }
 
-  // --- Search wiring --------------------------------------------------------
-  const onSearch = debounce(() => {
-    const next = qEl.value.trim();
-    if (next === query) return;
-    query = next;
-    qClear.classList.toggle("visible", !!query);
-    resetAndLoad();
-  }, 350);
-  qEl.addEventListener("input", onSearch);
-  qClear.addEventListener("click", () => {
-    qEl.value = "";
-    query = "";
-    qClear.classList.remove("visible");
-    resetAndLoad();
-    qEl.focus();
-  });
-
-  // --- Initial tool-input (category/query passed from show_headlines) -------
-  // Some hosts pass {name, arguments}, others pass the args directly — tolerate
-  // both shapes so we don't silently miss the initial category/query.
-  function applyToolInput(input) {
-    if (!input || typeof input !== "object") return;
-    const args = (input.arguments && typeof input.arguments === "object")
-      ? input.arguments : input;
-    if (typeof args.category === "string" && CATEGORIES.find(c => c.id === args.category)) {
-      category = args.category;
+  // --- Extract structured payload from a tool result --------------------
+  function extractPayload(params) {
+    if (!params || typeof params !== "object") return null;
+    if (params.structuredContent && typeof params.structuredContent === "object") {
+      return params.structuredContent;
     }
-    if (typeof args.query === "string") {
-      query = args.query;
-      qEl.value = args.query;
-      qClear.classList.toggle("visible", !!args.query);
+    const text = params.content?.[0]?.text;
+    if (typeof text === "string" && text.trim().startsWith("{")) {
+      try { return JSON.parse(text); } catch { /* fall through */ }
     }
+    return null;
   }
 
   // --- Connect --------------------------------------------------------------
-  const app = new App({ name: "headlines", version: "1.0.0" });
+  showSkeletons(5);
+
+  const app = new App({ name: "headlines", version: "2.0.0" });
   app.onerror = (e) => setStatus("log: error: " + (e?.message || e));
-  app.ontoolinput = (input) => applyToolInput(input);
+
+  app.ontoolresult = (params) => {
+    setStatus("log: tool-result received");
+    const payload = extractPayload(params);
+    if (payload) applyPayload(payload);
+  };
+
+  // Some hosts pass the data via tool-input instead. Try both.
+  app.ontoolinput = (params) => {
+    const args = (params?.arguments && typeof params.arguments === "object")
+      ? params.arguments : params;
+    // If args carry a category/query, reflect in the tag while we wait.
+    const label =
+      args?.query ? `Search: "${args.query}"` :
+      args?.category ? capitalize(args.category) :
+      tagEl.textContent;
+    tagEl.textContent = label;
+    setStatus(`log: tool-input cat=${args?.category || ""} q="${args?.query || ""}"`);
+  };
 
   app.connect();
-  applyToolInput(app.toolInput);
 
-  resetAndLoad();
+  // Safety net: if neither tool-result nor tool-input lands within a few
+  // seconds, fall back to a friendly empty state so the user isn't stuck
+  // on skeletons forever.
+  setTimeout(() => {
+    if (!rendered) {
+      showBannerHTML(
+        "Couldn't receive headlines from the server. " +
+        "Ask Toto to show the news again, or check that NEWSAPI_KEY is set.",
+        true
+      );
+      setStatus("log: timeout — no tool-result/tool-input received");
+    }
+  }, 12000);
 </script>
 </body>
 </html>

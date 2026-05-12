@@ -971,13 +971,16 @@ async def submit_age_check(
 
 
 # ---------------------------------------------------------------------------
-# 26. Headlines — Taboola-style infinite feed of real news from NewsAPI.
-# The widget cannot call NewsAPI directly: the free Developer tier blocks
-# browser requests from non-localhost origins, and we don't want the key
-# in client code. Instead, the widget calls the app-only `fetch_headlines`
-# tool, which proxies the request server-side using NEWSAPI_KEY env var.
-# Thumbnails route through the wsrv.nl image proxy so the CSP allowlist
-# stays narrow regardless of which publisher CDN serves each image.
+# 26. Headlines — list of real news from NewsAPI.
+# We can't call NewsAPI from the iframe: free-tier blocks non-localhost
+# browser requests, and the key shouldn't live in client code. We also
+# can't use a widget→server callback (the host we target routes those
+# results to chat, not back to the widget). So show_headlines does the
+# NewsAPI fetch itself and returns the articles as structured content;
+# the widget reads them via the SDK's `ontoolresult` event.
+#
+# To change category / search, the user just asks Toto again — each call
+# to show_headlines mounts a fresh widget with the new results.
 # ---------------------------------------------------------------------------
 
 _NEWSAPI_BASE = "https://newsapi.org/v2"
@@ -987,57 +990,9 @@ _NEWSAPI_CATEGORIES = {
 }
 
 
-@mcp.resource(
-    "ui://headlines",
-    mime_type="text/html;profile=mcp-app",
-    meta={
-        "ui": {
-            "prefersBorder": True,
-            "csp": {
-                "resourceDomains": [
-                    "https://cdn.jsdelivr.net",
-                    "https://wsrv.nl",
-                ],
-            },
-        }
-    },
-)
-def headlines_app() -> str:
-    return _load_app("26-headlines.html")
-
-
-@mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
-async def show_headlines(category: str = "general", query: str = "") -> dict:
-    """Render a live news feed from NewsAPI.
-
-    Args:
-        category: One of general / business / technology / science /
-            health / sports / entertainment. Ignored when `query` is set
-            (NewsAPI's /everything endpoint doesn't accept category).
-        query: Optional keyword. When provided, the widget switches from
-            top-headlines to /everything mode and filters by keyword.
-    """
-    if category not in _NEWSAPI_CATEGORIES:
-        category = "general"
-    label = f'"{query}"' if query else category
-    return {"category": category, "query": query, "label": label}
-
-
-@mcp.tool()
-async def fetch_headlines(
-    category: str = "general",
-    query: str = "",
-    page: int = 1,
-    page_size: int = 20,
-) -> dict:
-    """Internal callback used by the show_headlines widget to page through
-    NewsAPI. The model can see it but normally wouldn't call it directly —
-    use show_headlines instead, which mounts the interactive UI.
-
-    Returns a normalized payload:
-        {ok: bool, articles: [...], total_results: int, page: int,
-         has_next: bool, error?: str, code?: str}
-    """
+async def _fetch_newsapi(category: str, query: str, page_size: int) -> dict:
+    """Server-side NewsAPI fetch. Returns the normalized payload that the
+    headlines widget consumes."""
     api_key = os.environ.get("NEWSAPI_KEY", "").strip()
     if not api_key:
         return {
@@ -1046,15 +1001,13 @@ async def fetch_headlines(
             "error": "NEWSAPI_KEY environment variable is not set on the MCP server.",
         }
 
-    # Clamp inputs to NewsAPI free-tier limits.
-    page = max(1, int(page or 1))
     page_size = max(1, min(int(page_size or 20), 100))
 
     if query:
         url = f"{_NEWSAPI_BASE}/everything"
         params = {
             "q": query,
-            "page": page,
+            "page": 1,
             "pageSize": page_size,
             "sortBy": "publishedAt",
             "language": "en",
@@ -1065,7 +1018,7 @@ async def fetch_headlines(
         params = {
             "country": "us",
             "category": cat,
-            "page": page,
+            "page": 1,
             "pageSize": page_size,
         }
 
@@ -1077,8 +1030,6 @@ async def fetch_headlines(
     except httpx.HTTPError as e:
         return {"ok": False, "code": "network", "error": f"Network error: {e}"}
 
-    # NewsAPI returns error details in the JSON body even on 4xx, so try
-    # to parse before checking status.
     try:
         body = r.json()
     except ValueError:
@@ -1111,17 +1062,57 @@ async def fetch_headlines(
             "published_at": a.get("publishedAt") or "",
         })
 
-    total = int(body.get("totalResults") or 0)
-    has_next = (page * page_size) < total and len(raw_articles) >= page_size
-
     return {
         "ok": True,
         "articles": articles,
-        "total_results": total,
-        "page": page,
-        "page_size": page_size,
-        "has_next": has_next,
+        "total_results": int(body.get("totalResults") or 0),
+        "category": category if not query else "",
+        "query": query,
     }
+
+
+@mcp.resource(
+    "ui://headlines",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": [
+                    "https://cdn.jsdelivr.net",
+                    "https://wsrv.nl",
+                ],
+            },
+        }
+    },
+)
+def headlines_app() -> str:
+    return _load_app("26-headlines.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
+async def show_headlines(
+    category: str = "general",
+    query: str = "",
+    page_size: int = 20,
+) -> dict:
+    """Render a live news feed from NewsAPI.
+
+    Fetches NewsAPI server-side and returns the articles inline so the
+    widget can render them on mount. To change category or search,
+    invoke show_headlines again — each call mounts a fresh widget.
+
+    Args:
+        category: One of general / business / technology / science /
+            health / sports / entertainment. Ignored when `query` is set
+            (NewsAPI /everything doesn't accept category).
+        query: Optional keyword. When provided, switches from
+            /top-headlines to /everything and filters by keyword.
+        page_size: 1-100, clamped server-side. Defaults to 20.
+    """
+    if category not in _NEWSAPI_CATEGORIES:
+        category = "general"
+    return await _fetch_newsapi(category=category, query=query, page_size=page_size)
 
 
 if __name__ == "__main__":
