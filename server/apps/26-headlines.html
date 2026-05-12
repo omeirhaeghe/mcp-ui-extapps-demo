@@ -35,6 +35,25 @@
     .tag::before { content:""; width:6px; height:6px; border-radius:999px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
 
+    /* Category picker chips */
+    .chips { display:flex; gap:6px; overflow-x:auto; padding: 2px 4px 12px;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      margin: 0 -4px 4px; }
+    .chips::-webkit-scrollbar { display:none; }
+    .chip { padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+      background: var(--card); color: var(--fg); font: 600 12px inherit; cursor:pointer;
+      white-space:nowrap; flex-shrink:0;
+      transition: background .15s ease, color .15s ease,
+                  border-color .15s ease, transform .1s ease; }
+    .chip:hover { background: var(--chip); }
+    .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color:#fff; border-color: transparent; }
+    .chip .count { opacity:.7; font-weight:500; margin-left:4px; }
+    .chip.active .count { opacity:.9; }
+    .chip.err { color: var(--bad); border-color: rgba(220,38,38,.5); }
+    .chip.err::after { content:" ⚠"; }
+
     .list { display:flex; flex-direction:column; gap:10px; }
 
     .card { position:relative; display:flex; gap:12px; align-items:stretch;
@@ -115,6 +134,7 @@
       <span class="tag" id="tag">News</span>
     </div>
 
+    <div class="chips" id="chips" role="tablist"></div>
     <div class="list" id="list"></div>
     <div class="footer">
       Powered by <a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI.org</a>
@@ -135,8 +155,21 @@
   const statusEl   = document.getElementById("status");
   const tagEl      = document.getElementById("tag");
   const subtitleEl = document.getElementById("subtitle");
+  const chipsEl    = document.getElementById("chips");
+
+  const CATEGORY_LABELS = {
+    general:       "Top",
+    business:      "Finance",
+    technology:    "Tech",
+    science:       "Science",
+    health:        "Health",
+    sports:        "Sports",
+    entertainment: "Entertainment",
+  };
 
   let rendered = false;
+  let bundle = null;       // { categories, search, query, current, category_order }
+  let currentTab = null;   // category id OR "search"
 
   // --- Helpers --------------------------------------------------------------
   function setStatus(text) { statusEl.textContent = text; }
@@ -248,7 +281,7 @@
     listEl.appendChild(div);
   }
 
-  // --- Apply payload from show_headlines's result ---------------------------
+  // --- Apply the show_headlines bundle (categories + optional search) -------
   function applyPayload(payload) {
     if (rendered) return;
     if (!payload || typeof payload !== "object") return;
@@ -267,32 +300,109 @@
       return;
     }
 
-    const articles = Array.isArray(payload.articles) ? payload.articles : [];
-    const label =
-      payload.query ? `Search: "${payload.query}"` :
-      payload.category ? capitalize(payload.category) :
-      "News";
-    tagEl.textContent = label;
+    bundle = payload;
+    currentTab = payload.current || (payload.query ? "search" : "general");
+    renderChips();
+    renderActiveTab();
+  }
 
-    const totalText = payload.total_results
-      ? ` · ${payload.total_results.toLocaleString()} results`
-      : "";
-    subtitleEl.textContent = `Live from NewsAPI${totalText} · Tap a story to open it.`;
+  function renderChips() {
+    if (!bundle) return;
+    chipsEl.innerHTML = "";
+
+    const order = Array.isArray(bundle.category_order) && bundle.category_order.length
+      ? bundle.category_order
+      : Object.keys(bundle.categories || {});
+
+    // Optional "Search" chip first when a query was issued.
+    if (bundle.query) {
+      const sr = bundle.search || {};
+      const count = Array.isArray(sr.articles) ? sr.articles.length : 0;
+      chipsEl.appendChild(makeChip(
+        "search",
+        `Search: "${bundle.query}"`,
+        count,
+        sr.ok === false
+      ));
+    }
+
+    for (const cat of order) {
+      const block = (bundle.categories || {})[cat] || {};
+      const count = Array.isArray(block.articles) ? block.articles.length : 0;
+      chipsEl.appendChild(makeChip(
+        cat,
+        CATEGORY_LABELS[cat] || capitalize(cat),
+        count,
+        block.ok === false
+      ));
+    }
+  }
+
+  function makeChip(id, label, count, isErr) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.role = "tab";
+    b.className = "chip" + (id === currentTab ? " active" : "") + (isErr ? " err" : "");
+    b.setAttribute("aria-selected", String(id === currentTab));
+    b.innerHTML = `${escape(label)}${count ? `<span class="count">${count}</span>` : ""}`;
+    b.addEventListener("click", () => {
+      if (id === currentTab) return;
+      currentTab = id;
+      renderChips();
+      renderActiveTab();
+    });
+    return b;
+  }
+
+  function renderActiveTab() {
+    if (!bundle) return;
+    const block = (currentTab === "search")
+      ? (bundle.search || {})
+      : ((bundle.categories || {})[currentTab] || {});
+
+    // Header tag + subtitle reflect the active tab.
+    if (currentTab === "search") {
+      tagEl.textContent = `Search: "${bundle.query}"`;
+    } else {
+      tagEl.textContent = CATEGORY_LABELS[currentTab] || capitalize(currentTab);
+    }
+
+    const articles = Array.isArray(block.articles) ? block.articles : [];
+    const total = block.total_results
+      ? ` · ${block.total_results.toLocaleString()} results`
+      : (articles.length ? ` · ${articles.length} shown` : "");
+    subtitleEl.textContent = `Live from NewsAPI${total} · Tap a story to open it.`;
+
+    if (block.ok === false) {
+      const code = block.code || "";
+      const msg = block.error || "Couldn't load this category.";
+      const hint = code === "rateLimited"
+        ? "<br><br>NewsAPI free tier is rate-limited (100 requests/day)."
+        : "";
+      showBannerHTML(`${msg}${hint}`, true);
+      setStatus(`log: tab error — ${code}: ${msg}`);
+      return;
+    }
 
     if (articles.length === 0) {
-      showEmpty(payload.query
-        ? `No results for "${payload.query}".`
-        : "No headlines available right now.");
+      showEmpty(currentTab === "search"
+        ? `No results for "${bundle.query}".`
+        : "No stories in this category right now.");
       return;
     }
 
     listEl.innerHTML = "";
     for (const a of articles) listEl.appendChild(renderCard(a));
-    setStatus(`log: ok — ${articles.length} stories rendered`);
+    setStatus(`log: ${currentTab} — ${articles.length} stories`);
   }
 
   function capitalize(s) {
     return s && s.length ? s[0].toUpperCase() + s.slice(1) : s;
+  }
+  function escape(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;",
+    }[ch]));
   }
 
   // --- Extract structured payload from a tool result --------------------

@@ -983,13 +983,16 @@ async def submit_age_check(
 # to show_headlines mounts a fresh widget with the new results.
 # ---------------------------------------------------------------------------
 
+import asyncio as _asyncio
 import json as _json
 
 _NEWSAPI_BASE = "https://newsapi.org/v2"
-_NEWSAPI_CATEGORIES = {
+# Ordered for the picker UI; matches NewsAPI's supported categories.
+_NEWSAPI_CATEGORY_ORDER = [
     "general", "business", "technology", "science",
     "health", "sports", "entertainment",
-}
+]
+_NEWSAPI_CATEGORIES = set(_NEWSAPI_CATEGORY_ORDER)
 
 # Most recent show_headlines result, injected into the resource HTML at
 # read time so the widget can render without depending on the host
@@ -999,19 +1002,16 @@ _NEWSAPI_CATEGORIES = {
 _last_headlines_payload: dict | None = None
 
 
-async def _fetch_newsapi(category: str, query: str, page_size: int) -> dict:
-    """Server-side NewsAPI fetch. Returns the normalized payload that the
-    headlines widget consumes."""
-    api_key = os.environ.get("NEWSAPI_KEY", "").strip()
-    if not api_key:
-        return {
-            "ok": False,
-            "code": "no_api_key",
-            "error": "NEWSAPI_KEY environment variable is not set on the MCP server.",
-        }
-
+async def _newsapi_get(
+    client: httpx.AsyncClient,
+    api_key: str,
+    *,
+    category: str = "",
+    query: str = "",
+    page_size: int = 20,
+) -> dict:
+    """One NewsAPI GET — top-headlines if no query, /everything otherwise."""
     page_size = max(1, min(int(page_size or 20), 100))
-
     if query:
         url = f"{_NEWSAPI_BASE}/everything"
         params = {
@@ -1030,12 +1030,10 @@ async def _fetch_newsapi(category: str, query: str, page_size: int) -> dict:
             "page": 1,
             "pageSize": page_size,
         }
-
     headers = {"X-Api-Key": api_key, "User-Agent": "mcp-ui-extapps-demo/1.0"}
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get(url, params=params, headers=headers)
+        r = await client.get(url, params=params, headers=headers)
     except httpx.HTTPError as e:
         return {"ok": False, "code": "network", "error": f"Network error: {e}"}
 
@@ -1075,8 +1073,65 @@ async def _fetch_newsapi(category: str, query: str, page_size: int) -> dict:
         "ok": True,
         "articles": articles,
         "total_results": int(body.get("totalResults") or 0),
-        "category": category if not query else "",
+    }
+
+
+async def _fetch_headlines_bundle(
+    selected: str,
+    query: str,
+    per_category: int,
+    query_size: int,
+) -> dict:
+    """Build the payload the widget consumes. Fetches every category in
+    parallel so the in-widget picker can switch instantly. If `query` is
+    set, also runs a /everything fetch and surfaces those as a separate
+    'search' tab.
+    """
+    api_key = os.environ.get("NEWSAPI_KEY", "").strip()
+    if not api_key:
+        return {
+            "ok": False,
+            "code": "no_api_key",
+            "error": "NEWSAPI_KEY environment variable is not set on the MCP server.",
+        }
+
+    if selected not in _NEWSAPI_CATEGORIES:
+        selected = "general"
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        tasks = [
+            _newsapi_get(client, api_key, category=cat, page_size=per_category)
+            for cat in _NEWSAPI_CATEGORY_ORDER
+        ]
+        if query:
+            tasks.append(
+                _newsapi_get(client, api_key, query=query, page_size=query_size)
+            )
+        results = await _asyncio.gather(*tasks, return_exceptions=True)
+
+    categories: dict[str, dict] = {}
+    for cat, r in zip(_NEWSAPI_CATEGORY_ORDER, results):
+        if isinstance(r, Exception):
+            categories[cat] = {"ok": False, "code": "exception", "error": str(r)}
+        else:
+            categories[cat] = r
+
+    search: dict | None = None
+    if query:
+        sr = results[-1]
+        search = (
+            {"ok": False, "code": "exception", "error": str(sr)}
+            if isinstance(sr, Exception)
+            else sr
+        )
+
+    return {
+        "ok": True,
+        "current": "search" if query else selected,
+        "category_order": list(_NEWSAPI_CATEGORY_ORDER),
+        "categories": categories,
         "query": query,
+        "search": search,
     }
 
 
@@ -1101,7 +1156,12 @@ def headlines_app() -> str:
     parses it on load — no host notification routing required."""
     template = _load_app("26-headlines.html")
     payload = _last_headlines_payload or {
-        "ok": True, "articles": [], "category": "", "query": "", "total_results": 0
+        "ok": True,
+        "current": "general",
+        "category_order": list(_NEWSAPI_CATEGORY_ORDER),
+        "categories": {c: {"ok": True, "articles": []} for c in _NEWSAPI_CATEGORY_ORDER},
+        "query": "",
+        "search": None,
     }
     # Escape `</` inside the JSON to keep it safe inside a script tag.
     inlined = _json.dumps(payload).replace("</", "<\\/")
@@ -1112,35 +1172,46 @@ def headlines_app() -> str:
 async def show_headlines(
     category: str = "general",
     query: str = "",
-    page_size: int = 20,
+    per_category: int = 10,
 ) -> str:
-    """Render a live news feed from NewsAPI.
+    """Render a live news feed from NewsAPI with an in-widget category picker.
 
-    Fetches articles server-side and caches them on the server so the
-    headlines widget can render them on mount without depending on the
-    host to route the tool result back to the iframe. To change category
-    or search, invoke show_headlines again — each call mounts a fresh
-    widget.
+    Pre-fetches all seven categories (general / business / technology /
+    science / health / sports / entertainment) in parallel and inlines
+    every article into the widget HTML, so the picker chips switch
+    categories instantly with no further server roundtrip. If `query` is
+    set, a /everything search runs alongside the category pre-fetch and
+    surfaces as a separate 'search' tab.
+
+    Each call to this tool mounts a fresh widget.
 
     Args:
-        category: One of general / business / technology / science /
-            health / sports / entertainment. Ignored when `query` is set
-            (NewsAPI /everything doesn't accept category).
-        query: Optional keyword. When provided, switches from
-            /top-headlines to /everything and filters by keyword.
-        page_size: 1-100, clamped server-side. Defaults to 20.
+        category: Which category the picker starts on. Ignored when
+            `query` is set (the search tab is shown first instead).
+        query: Optional keyword. Runs against NewsAPI /everything in
+            parallel with the category pre-fetch.
+        per_category: Articles to pull per category. Defaults to 10;
+            clamped to 1-20 server-side to keep the inlined HTML small
+            and stay within the free-tier 100-request/day quota.
     """
     global _last_headlines_payload
-    if category not in _NEWSAPI_CATEGORIES:
-        category = "general"
-    _last_headlines_payload = await _fetch_newsapi(
-        category=category, query=query, page_size=page_size
+    per_category = max(1, min(int(per_category or 10), 20))
+    _last_headlines_payload = await _fetch_headlines_bundle(
+        selected=category,
+        query=query,
+        per_category=per_category,
+        query_size=per_category * 2,
     )
     if not _last_headlines_payload.get("ok"):
         return f"Headlines error: {_last_headlines_payload.get('error') or 'unknown'}"
-    n = len(_last_headlines_payload.get("articles") or [])
-    label = f'"{query}"' if query else category
-    return f"Showing {n} {label} headlines."
+
+    cats = _last_headlines_payload.get("categories") or {}
+    total = sum(len((c or {}).get("articles") or []) for c in cats.values())
+    bits = [f"{total} headlines across {len(cats)} categories"]
+    if query:
+        s = _last_headlines_payload.get("search") or {}
+        bits.append(f'{len(s.get("articles") or [])} matches for "{query}"')
+    return "Showing " + " · ".join(bits) + "."
 
 
 if __name__ == "__main__":
