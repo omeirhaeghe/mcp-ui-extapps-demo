@@ -949,6 +949,41 @@ async def submit_age_check(
     )
 
 
+# ---------------------------------------------------------------------------
+# 26. News roll — Taboola-style endless feed backed by the (no-auth)
+# Spaceflight News API. Thumbnails route through the wsrv.nl image proxy
+# so a single resourceDomains entry covers every upstream news site.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://news-roll",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": [
+                    "https://cdn.jsdelivr.net",
+                    "https://wsrv.nl",
+                ],
+                "connectDomains": [
+                    "https://api.spaceflightnewsapi.net",
+                ],
+            },
+        }
+    },
+)
+def news_roll_app() -> str:
+    return _load_app("26-news-roll.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://news-roll"}})
+async def show_news_roll() -> str:
+    """Render an endless, Taboola-style news roll. The widget paginates the
+    Spaceflight News API on scroll and opens each story via ui/open-link."""
+    return "News roll rendered. Scroll for more stories."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
