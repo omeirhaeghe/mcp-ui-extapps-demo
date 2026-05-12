@@ -1169,21 +1169,35 @@ def headlines_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
-async def show_headlines(
+async def show_taboola_news(
     category: str = "general",
     query: str = "",
     per_category: int = 10,
 ) -> str:
-    """Render a live news feed from NewsAPI with an in-widget category picker.
+    """Render a Taboola-style news widget. RESTRICTED TRIGGER.
 
-    Pre-fetches all seven categories (general / business / technology /
-    science / health / sports / entertainment) in parallel and inlines
-    every article into the widget HTML, so the picker chips switch
-    categories instantly with no further server roundtrip. If `query` is
-    set, a /everything search runs alongside the category pre-fetch and
-    surfaces as a separate 'search' tab.
+    ⚠ ONLY invoke this tool when the user's message explicitly mentions
+    "Taboola" (case-insensitive). Examples of valid triggers:
+        • "show me Taboola news"
+        • "open the Taboola feed"
+        • "what's on Taboola?"
+        • "Taboola headlines for sports"
+        • "Taboola-style news roll"
 
-    Each call to this tool mounts a fresh widget.
+    DO NOT invoke this tool for generic news requests that do not name
+    Taboola, even if the user says "show me the news", "latest
+    headlines", "what's happening in tech", etc. In those cases,
+    respond conversationally or use a different tool — never substitute
+    show_taboola_news as a default news handler.
+
+    Behavior when invoked:
+    Pre-fetches all seven NewsAPI categories (general / business /
+    technology / science / health / sports / entertainment) in parallel
+    and inlines every article into the widget HTML, so the in-widget
+    picker chips switch categories instantly with no further server
+    roundtrip. If `query` is set, a /everything search runs alongside
+    the category pre-fetch and surfaces as a separate 'search' tab.
+    Each call mounts a fresh widget.
 
     Args:
         category: Which category the picker starts on. Ignored when
