@@ -14,6 +14,7 @@ import argparse
 import os
 from pathlib import Path
 
+import httpx
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -950,14 +951,24 @@ async def submit_age_check(
 
 
 # ---------------------------------------------------------------------------
-# 26. News roll — Taboola-style endless list of fabricated Florida Man
-# headlines. All content is client-side; only thumbnails hit the network
-# (random photos via picsum.photos, routed through the wsrv.nl proxy so
-# the CSP allowlist stays tight). No upstream news API to rate-limit.
+# 26. Headlines — Taboola-style infinite feed of real news from NewsAPI.
+# The widget cannot call NewsAPI directly: the free Developer tier blocks
+# browser requests from non-localhost origins, and we don't want the key
+# in client code. Instead, the widget calls the app-only `fetch_headlines`
+# tool, which proxies the request server-side using NEWSAPI_KEY env var.
+# Thumbnails route through the wsrv.nl image proxy so the CSP allowlist
+# stays narrow regardless of which publisher CDN serves each image.
 # ---------------------------------------------------------------------------
 
+_NEWSAPI_BASE = "https://newsapi.org/v2"
+_NEWSAPI_CATEGORIES = {
+    "general", "business", "technology", "science",
+    "health", "sports", "entertainment",
+}
+
+
 @mcp.resource(
-    "ui://news-roll",
+    "ui://headlines",
     mime_type="text/html;profile=mcp-app",
     meta={
         "ui": {
@@ -971,17 +982,125 @@ async def submit_age_check(
         }
     },
 )
-def news_roll_app() -> str:
-    return _load_app("26-news-roll.html")
+def headlines_app() -> str:
+    return _load_app("26-headlines.html")
 
 
-@mcp.tool(meta={"ui": {"resourceUri": "ui://news-roll"}})
-async def show_news_roll() -> str:
-    """Render an endless, Taboola-style Florida-Man news roll. Stories are
-    fabricated and cycle through with rotating prefixes; thumbnails are
-    random photos. Each card opens en.wikipedia.org/wiki/Florida_Man via
-    ui/open-link."""
-    return "Florida Man Wire rendered. Scroll for more weirdness."
+@mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
+async def show_headlines(category: str = "general", query: str = "") -> dict:
+    """Render a live news feed from NewsAPI.
+
+    Args:
+        category: One of general / business / technology / science /
+            health / sports / entertainment. Ignored when `query` is set
+            (NewsAPI's /everything endpoint doesn't accept category).
+        query: Optional keyword. When provided, the widget switches from
+            top-headlines to /everything mode and filters by keyword.
+    """
+    if category not in _NEWSAPI_CATEGORIES:
+        category = "general"
+    label = f'"{query}"' if query else category
+    return {"category": category, "query": query, "label": label}
+
+
+@mcp.tool(meta={"ui": {"visibility": ["app"]}})
+async def fetch_headlines(
+    category: str = "general",
+    query: str = "",
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    """App-only callback that proxies NewsAPI requests. Hidden from the
+    model via visibility=["app"] — only the headlines widget can call it.
+
+    Returns a normalized payload:
+        {ok: bool, articles: [...], total_results: int, page: int,
+         has_next: bool, error?: str, code?: str}
+    """
+    api_key = os.environ.get("NEWSAPI_KEY", "").strip()
+    if not api_key:
+        return {
+            "ok": False,
+            "code": "no_api_key",
+            "error": "NEWSAPI_KEY environment variable is not set on the MCP server.",
+        }
+
+    # Clamp inputs to NewsAPI free-tier limits.
+    page = max(1, int(page or 1))
+    page_size = max(1, min(int(page_size or 20), 100))
+
+    if query:
+        url = f"{_NEWSAPI_BASE}/everything"
+        params = {
+            "q": query,
+            "page": page,
+            "pageSize": page_size,
+            "sortBy": "publishedAt",
+            "language": "en",
+        }
+    else:
+        cat = category if category in _NEWSAPI_CATEGORIES else "general"
+        url = f"{_NEWSAPI_BASE}/top-headlines"
+        params = {
+            "country": "us",
+            "category": cat,
+            "page": page,
+            "pageSize": page_size,
+        }
+
+    headers = {"X-Api-Key": api_key, "User-Agent": "mcp-ui-extapps-demo/1.0"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(url, params=params, headers=headers)
+    except httpx.HTTPError as e:
+        return {"ok": False, "code": "network", "error": f"Network error: {e}"}
+
+    # NewsAPI returns error details in the JSON body even on 4xx, so try
+    # to parse before checking status.
+    try:
+        body = r.json()
+    except ValueError:
+        return {
+            "ok": False,
+            "code": "bad_response",
+            "error": f"HTTP {r.status_code}: response was not JSON.",
+        }
+
+    if r.status_code >= 400 or body.get("status") != "ok":
+        return {
+            "ok": False,
+            "code": body.get("code") or f"http_{r.status_code}",
+            "error": body.get("message") or f"HTTP {r.status_code}",
+        }
+
+    raw_articles = body.get("articles") or []
+    articles: list[dict] = []
+    for a in raw_articles:
+        title = (a.get("title") or "").strip()
+        if not title or title == "[Removed]":
+            continue
+        articles.append({
+            "title": title,
+            "summary": (a.get("description") or "").strip(),
+            "url": a.get("url") or "",
+            "image": a.get("urlToImage") or "",
+            "source": ((a.get("source") or {}).get("name") or "").strip(),
+            "author": (a.get("author") or "").strip(),
+            "published_at": a.get("publishedAt") or "",
+        })
+
+    total = int(body.get("totalResults") or 0)
+    has_next = (page * page_size) < total and len(raw_articles) >= page_size
+
+    return {
+        "ok": True,
+        "articles": articles,
+        "total_results": total,
+        "page": page,
+        "page_size": page_size,
+        "has_next": has_next,
+    }
 
 
 if __name__ == "__main__":
