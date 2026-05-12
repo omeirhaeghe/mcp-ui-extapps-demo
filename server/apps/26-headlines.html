@@ -344,14 +344,29 @@
     listEl.appendChild(end);
   }
 
-  // --- Data fetch via app-only server tool ----------------------------------
+  // --- Data fetch via server tool -------------------------------------------
   async function fetchPage(p) {
     const result = await app.callServerTool({
       name: "fetch_headlines",
       arguments: { category, query, page: p, page_size: PAGE_SIZE },
     });
-    return result.structuredContent
-      || JSON.parse(result.content?.[0]?.text || "{}");
+    // Surface host/server errors with their real text instead of choking
+    // on `JSON.parse("Tool dispatch failed: ...")` style messages.
+    if (result?.isError) {
+      const text = result.content?.[0]?.text || "Unknown tool error.";
+      const err = new Error(text);
+      err.toolError = true;
+      throw err;
+    }
+    if (result?.structuredContent) return result.structuredContent;
+    const text = result?.content?.[0]?.text || "";
+    try {
+      return JSON.parse(text || "{}");
+    } catch {
+      const err = new Error(text || "Empty tool response.");
+      err.toolError = true;
+      throw err;
+    }
   }
 
   async function loadNextPage() {
@@ -466,15 +481,19 @@
   });
 
   // --- Initial tool-input (category/query passed from show_headlines) -------
+  // Some hosts pass {name, arguments}, others pass the args directly — tolerate
+  // both shapes so we don't silently miss the initial category/query.
   function applyToolInput(input) {
     if (!input || typeof input !== "object") return;
-    if (typeof input.category === "string" && CATEGORIES.find(c => c.id === input.category)) {
-      category = input.category;
+    const args = (input.arguments && typeof input.arguments === "object")
+      ? input.arguments : input;
+    if (typeof args.category === "string" && CATEGORIES.find(c => c.id === args.category)) {
+      category = args.category;
     }
-    if (typeof input.query === "string") {
-      query = input.query;
-      qEl.value = input.query;
-      qClear.classList.toggle("visible", !!input.query);
+    if (typeof args.query === "string") {
+      query = args.query;
+      qEl.value = args.query;
+      qClear.classList.toggle("visible", !!args.query);
     }
   }
 
