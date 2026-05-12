@@ -1023,15 +1023,16 @@ async def show_headlines(category: str = "general", query: str = "") -> dict:
     return {"category": category, "query": query, "label": label}
 
 
-@mcp.tool(meta={"ui": {"visibility": ["app"]}})
+@mcp.tool()
 async def fetch_headlines(
     category: str = "general",
     query: str = "",
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
-    """App-only callback that proxies NewsAPI requests. Hidden from the
-    model via visibility=["app"] — only the headlines widget can call it.
+    """Internal callback used by the show_headlines widget to page through
+    NewsAPI. The model can see it but normally wouldn't call it directly —
+    use show_headlines instead, which mounts the interactive UI.
 
     Returns a normalized payload:
         {ok: bool, articles: [...], total_results: int, page: int,
