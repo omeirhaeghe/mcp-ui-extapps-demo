@@ -1169,26 +1169,26 @@ def headlines_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
-async def show_taboola_news(
+async def show_spamoola_news(
     category: str = "general",
     query: str = "",
     per_category: int = 10,
 ) -> str:
-    """Render a Taboola-style news widget. RESTRICTED TRIGGER.
+    """Render a Spamoola-style news widget. RESTRICTED TRIGGER.
 
     ⚠ ONLY invoke this tool when the user's message explicitly mentions
-    "Taboola" (case-insensitive). Examples of valid triggers:
-        • "show me Taboola news"
-        • "open the Taboola feed"
-        • "what's on Taboola?"
-        • "Taboola headlines for sports"
-        • "Taboola-style news roll"
+    "Spamoola" (case-insensitive). Examples of valid triggers:
+        • "show me Spamoola news"
+        • "open the Spamoola feed"
+        • "what's on Spamoola?"
+        • "Spamoola headlines for sports"
+        • "Spamoola-style news roll"
 
     DO NOT invoke this tool for generic news requests that do not name
-    Taboola, even if the user says "show me the news", "latest
+    Spamoola, even if the user says "show me the news", "latest
     headlines", "what's happening in tech", etc. In those cases,
     respond conversationally or use a different tool — never substitute
-    show_taboola_news as a default news handler.
+    show_spamoola_news as a default news handler.
 
     Behavior when invoked:
     Pre-fetches all seven NewsAPI categories (general / business /

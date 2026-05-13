@@ -54,7 +54,7 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 | 23 | `show_product_carousel` | Snap-scrolling carousel with Unsplash photos + embedded checkout modal | `tools/call` (`add_to_cart`, `checkout`) + `_meta.ui.csp.resourceDomains` (Unsplash CDN) — also a CSS playground (gradient borders, shine sweep, lift-on-hover) |
 | 24 | `show_age_picker`       | iOS-style wheel + manual input with life-stage chip | `tools/call` (`submit_age`) + `ui/notifications/tool-input` (initial age) — visual demo with morphing gradient theme |
 | 25 | `show_age_gate`         | Neutral FTC-style DOB gate, jurisdiction-aware (COPPA / GDPR / LGPD / DPDP / PIPA), persistent decision | `tools/call` (`submit_age_check`) — data-minimization pattern: DOB stays client-side, only the derived decision crosses the boundary |
-| 26 | `show_taboola_news`     | Taboola-style news grid — hero card, "Sponsored" badges, "Recommended by TABOOLA" footer, live category picker (general / business / tech / science / health / sports / entertainment), liquid-glass styling | Real keyed external API (NewsAPI) proxied **server-side** via `NEWSAPI_KEY` env var + structured result **inlined into the resource HTML** at `resources/read` time (works around hosts that route widget→server tool results to chat instead of back to the iframe) + `ui/open-link` |
+| 26 | `show_spamoola_news`     | Spamoola-style news grid — hero card, "Sponsored" badges, "Recommended by SPAMOOLA" footer, live category picker (general / business / tech / science / health / sports / entertainment), liquid-glass styling | Real keyed external API (NewsAPI) proxied **server-side** via `NEWSAPI_KEY` env var + structured result **inlined into the resource HTML** at `resources/read` time (works around hosts that route widget→server tool results to chat instead of back to the iframe) + `ui/open-link` |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
@@ -150,7 +150,7 @@ Pruning won't fix these — only adding new widgets will:
 4. Add the URL to your MCP host: `https://<your-service>.onrender.com/mcp`.
 
 That's it for 24 of 25 widgets — no auth, no DB. The one exception is
-**#26 `show_taboola_news`**, which hits NewsAPI server-side and needs
+**#26 `show_spamoola_news`**, which hits NewsAPI server-side and needs
 its key in an env var:
 
 - Grab a free key at <https://newsapi.org/register> (no credit card,
@@ -172,7 +172,7 @@ uv run python server/server.py --port 8767
 
 The server speaks Streamable HTTP at `http://localhost:8767/mcp`.
 
-For `show_taboola_news`, drop `NEWSAPI_KEY=…` into a `.env` file at the
+For `show_spamoola_news`, drop `NEWSAPI_KEY=…` into a `.env` file at the
 repo root (already in `.gitignore`); the server auto-loads it on
 startup. Or export it inline: `NEWSAPI_KEY=… uv run python server/server.py`.
 
