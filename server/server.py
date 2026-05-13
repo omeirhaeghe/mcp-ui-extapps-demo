@@ -69,7 +69,7 @@ def hello_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://hello"}})
-async def show_hello(name: str = "world") -> str:
+async def show_hello(name: str = "world"):
     """Render a static greeting card for the given name."""
     return f"Showing hello widget for {name}."
 
@@ -88,7 +88,7 @@ def counter_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://counter"}})
-async def show_counter(start: int = 0) -> str:
+async def show_counter(start: int = 0):
     """Render an interactive counter starting at the given value."""
     return f"Counter widget rendered (start={start})."
 
@@ -107,13 +107,13 @@ def feedback_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://feedback"}})
-async def show_feedback(prompt: str = "How was the response?") -> str:
+async def show_feedback(prompt: str = "How was the response?"):
     """Render a feedback form. Submissions invoke the `submit_feedback` tool."""
     return "Feedback widget rendered."
 
 
 @mcp.tool()
-async def submit_feedback(rating: int, text: str = "") -> str:
+async def submit_feedback(rating: int, text: str = ""):
     """Receive a feedback submission from the show_feedback widget."""
     return (
         f"Received feedback: {rating}/5 stars"
@@ -144,7 +144,7 @@ def price_chart_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://price-chart"}})
-async def show_price_chart(symbol: str = "BTC") -> str:
+async def show_price_chart(symbol: str = "BTC"):
     """Render a live crypto price chart (BTC/ETH/SOL/DOGE/ADA)."""
     return f"Price chart for {(symbol or 'BTC').upper()} rendered."
 
@@ -174,13 +174,13 @@ def map_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://map"}})
-async def show_map(lat: float = 37.7749, lng: float = -122.4194) -> str:
+async def show_map(lat: float = 37.7749, lng: float = -122.4194):
     """Render an interactive map. Pin drops invoke the `save_pin` tool."""
     return f"Map rendered centered at {lat}, {lng}."
 
 
 @mcp.tool()
-async def save_pin(lat: float, lng: float, label: str = "") -> str:
+async def save_pin(lat: float, lng: float, label: str = ""):
     """Receive a pin drop from the show_map widget."""
     return (
         f"Saved pin at ({lat:.4f}, {lng:.4f})"
@@ -202,7 +202,7 @@ def tictactoe_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://tictactoe"}})
-async def show_tictactoe() -> str:
+async def show_tictactoe():
     """Render a tic-tac-toe board. The widget calls back via `make_move`."""
     return "Tic-tac-toe rendered. You're X, AI is O."
 
@@ -288,13 +288,13 @@ def drawing_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://drawing"}})
-async def show_drawing() -> str:
+async def show_drawing():
     """Render a drawing canvas. Submissions invoke `save_drawing`."""
     return "Drawing canvas rendered."
 
 
 @mcp.tool()
-async def save_drawing(title: str, data_url: str) -> str:
+async def save_drawing(title: str, data_url: str):
     """Receive a drawing from the show_drawing widget."""
     size = len(data_url)
     return f'Saved drawing "{title}" ({size:,} byte data URL).'
@@ -320,17 +320,17 @@ async def show_todos(items: list[str] | None = None) -> dict:
 
 
 @mcp.tool()
-async def add_todo(text: str) -> str:
+async def add_todo(text: str):
     return f'Added todo: "{text}"'
 
 
 @mcp.tool()
-async def toggle_todo(text: str, done: bool) -> str:
+async def toggle_todo(text: str, done: bool):
     return f'{"Completed" if done else "Reopened"}: "{text}"'
 
 
 @mcp.tool()
-async def delete_todo(text: str) -> str:
+async def delete_todo(text: str):
     return f'Deleted todo: "{text}"'
 
 
@@ -359,7 +359,7 @@ def weather_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://weather"}})
-async def show_weather(city: str = "San Francisco") -> str:
+async def show_weather(city: str = "San Francisco"):
     """Render a current-conditions weather card for the given city."""
     return f"Weather for {city} rendered."
 
@@ -378,7 +378,7 @@ def three_d_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://three-d"}})
-async def show_3d(shape: str = "torus") -> str:
+async def show_3d(shape: str = "torus"):
     """Render a rotating 3D shape (torus / cube / sphere / knot)."""
     return f"3D viewer rendered (shape={shape})."
 
@@ -397,13 +397,13 @@ def punch_monkey_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://punch-monkey"}})
-async def show_punch_monkey() -> str:
+async def show_punch_monkey():
     """Render a 15-second punch-the-monkey clicker game."""
     return "Punch the monkey rendered. You have 15 seconds."
 
 
 @mcp.tool()
-async def record_punch_score(score: int, seconds: int) -> str:
+async def record_punch_score(score: int, seconds: int):
     """Receive the final score from the punch_monkey widget."""
     ppm = (score * 60.0 / seconds) if seconds else 0.0
     return f"Score recorded: {score} punches in {seconds}s ({ppm:.0f}/min)."
@@ -614,7 +614,7 @@ def hover_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://hover"}})
-async def show_hover() -> str:
+async def show_hover():
     """Render a hover-only spotlight panel — no clicks, just mouse movement."""
     return "Hover spotlight rendered. Move your mouse over the panel."
 
@@ -633,13 +633,13 @@ def florida_man_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://florida-man"}})
-async def show_florida_man() -> str:
+async def show_florida_man():
     """Cross the road as Florida Man without getting hit by golf carts."""
     return "Florida Man crossing rendered. Use arrow keys / WASD or the D-pad."
 
 
 @mcp.tool()
-async def record_florida_score(crossings: int, deaths: int) -> str:
+async def record_florida_score(crossings: int, deaths: int):
     """Receive the final score from the Florida Man widget."""
     return f"Florida Man recorded: {crossings} crossings, {deaths} deaths."
 
@@ -658,7 +658,7 @@ def kanban_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://kanban"}})
-async def show_kanban() -> str:
+async def show_kanban():
     """Render a kanban board that toggles between inline and fullscreen."""
     return "Kanban rendered. Click Maximize to switch display modes."
 
@@ -677,7 +677,7 @@ def themed_swatches_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://themed-swatches"}})
-async def show_themed_swatches() -> str:
+async def show_themed_swatches():
     """Render a swatch grid built from the host's CSS design tokens."""
     return "Theme inspector rendered. Toggle the host's theme to see live updates."
 
@@ -696,7 +696,7 @@ def signature_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://signature"}})
-async def show_signature() -> str:
+async def show_signature():
     """Render a signature pad that downloads its PNG via ui/download-file."""
     return "Signature pad rendered. Sign, then click Download PNG."
 
@@ -715,13 +715,13 @@ def one_shot_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://one-shot"}})
-async def show_one_shot() -> str:
+async def show_one_shot():
     """Render a one-question survey that asks the host to remove it on submit."""
     return "Survey rendered. After submit, the widget will request teardown."
 
 
 @mcp.tool()
-async def submit_survey(vote: str) -> str:
+async def submit_survey(vote: str):
     """Receive the survey vote from the show_one_shot widget."""
     return f"Recorded vote: {vote}"
 
@@ -741,7 +741,7 @@ def internal_counter_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://internal-counter"}})
-async def show_internal_counter() -> str:
+async def show_internal_counter():
     """Render a counter whose +1 button uses an app-only callback tool."""
     return "Internal counter rendered. The bump_counter tool is hidden from the model."
 
@@ -792,7 +792,7 @@ def embed_url_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://embed-url"}})
-async def show_url(url: str = "https://example.com") -> str:
+async def show_url(url: str = "https://example.com"):
     """Wrap an external URL as an MCP-app via a nested iframe.
 
     Only origins listed in the resource's `_meta.ui.csp.frameDomains`
@@ -819,7 +819,7 @@ def user_profile_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://user-profile"}})
-async def show_user_profile() -> str:
+async def show_user_profile():
     """Render a profile form. Submitting it pushes preferences into the
     model's context via ui/update-model-context (no callback tool)."""
     return "User profile rendered. Submitting will update the model's context."
@@ -842,7 +842,7 @@ def font_override_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://font-override"}})
-async def show_font_override() -> str:
+async def show_font_override():
     """Render font-family samples for sans/serif/mono. Each updates live when
     the host pushes --font-sans, --font-serif, or --font-mono via
     styles.variables on host-context-changed."""
@@ -874,7 +874,7 @@ def product_carousel_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://product-carousel"}})
-async def show_product_carousel() -> str:
+async def show_product_carousel():
     """Render a horizontal carousel of products with hover effects. The cart
     pill opens an embedded checkout modal; per-item adds round-trip via
     `add_to_cart` and order placement via `checkout`."""
@@ -882,14 +882,14 @@ async def show_product_carousel() -> str:
 
 
 @mcp.tool()
-async def add_to_cart(product_id: str, name: str = "", price: float = 0.0) -> str:
+async def add_to_cart(product_id: str, name: str = "", price: float = 0.0):
     """Receive an Add-to-Cart event from the show_product_carousel widget."""
     label = name or product_id
     return f'Added "{label}" to cart (id={product_id}, price=${price:.2f}).'
 
 
 @mcp.tool()
-async def checkout(order_id: str, items: list[dict], total: float) -> str:
+async def checkout(order_id: str, items: list[dict], total: float):
     """Receive a placed-order event from the show_product_carousel widget."""
     qty = sum(int(it.get("qty", 1)) for it in items)
     return f"Order {order_id} placed — {qty} item(s), total ${total:.2f}."
@@ -911,14 +911,14 @@ def age_picker_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://age-picker"}})
-async def show_age_picker(age: int = 25) -> str:
+async def show_age_picker(age: int = 25):
     """Render a wheel-style age picker. Scroll the wheel or type a number;
     Confirm fires the `submit_age` callback."""
     return f"Age picker rendered (start={age})."
 
 
 @mcp.tool()
-async def submit_age(age: int, stage: str = "") -> str:
+async def submit_age(age: int, stage: str = ""):
     """Receive a confirmed age from the show_age_picker widget."""
     return f"Age recorded: {age}" + (f" ({stage})" if stage else "") + "."
 
@@ -954,7 +954,7 @@ async def submit_age_check(
     jurisdiction: str,
     threshold: int,
     age_class: str,
-) -> str:
+):
     """Receive a derived age-gate decision from the show_age_gate widget.
 
     Args:
