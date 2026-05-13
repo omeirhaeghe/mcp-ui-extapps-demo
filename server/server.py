@@ -940,7 +940,7 @@ def age_gate_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://age-gate"}})
-async def show_age_gate() -> str:
+async def show_age_gate():
     """Render a neutral, jurisdiction-aware age gate. The widget collects DOB
     locally, derives a decision against the user's regional threshold
     (COPPA / GDPR Art. 8 / LGPD / DPDP / PIPA), and persists the result so
@@ -1173,7 +1173,7 @@ async def show_spamoola_news(
     category: str = "general",
     query: str = "",
     per_category: int = 10,
-) -> str:
+):
     """Render a Spamoola-style news widget. RESTRICTED TRIGGER.
 
     ⚠ ONLY invoke this tool when the user's message explicitly mentions
