@@ -148,104 +148,152 @@
     .chip.err { color: var(--bad); border-color: color-mix(in oklab, var(--bad) 40%, var(--glass-border)); }
     .chip.err::after { content:" ⚠"; }
 
-    /* ---------- Article list ---------- */
-    .list { display:flex; flex-direction:column; gap:12px; }
+    /* ---------- Taboola-style strapline ---------- */
+    .strapline { display:flex; align-items:center; justify-content:space-between;
+      gap:10px; padding: 4px 4px 10px; margin: 0 -4px 6px;
+      border-bottom: 1px solid var(--glass-border-soft); }
+    .strapline .lhs { display:flex; align-items:center; gap:8px; }
+    .strapline .promo {
+      font-size:11px; font-weight:700; letter-spacing:.04em;
+      text-transform:uppercase; color: var(--muted); }
+    .strapline .ad-choices {
+      font-size:10px; color: var(--muted); cursor:default;
+      display:inline-flex; align-items:center; gap:4px; }
+    .strapline .ad-choices::after {
+      content:""; width:11px; height:11px; border-radius:999px;
+      border:1px solid currentColor;
+      background: radial-gradient(circle at 35% 35%, currentColor 0 1.5px, transparent 2px);
+      opacity:.65; }
 
-    .card { position:relative; display:flex; gap:12px; align-items:stretch;
+    /* ---------- Article grid (Taboola style: image on top, headline below) ---------- */
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    @media (min-width: 720px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:16px; }
+    }
+
+    .card { position:relative; display:flex; flex-direction:column;
       background: var(--glass-bg);
-      backdrop-filter: blur(22px) saturate(190%);
-      -webkit-backdrop-filter: blur(22px) saturate(190%);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
       border: 1px solid var(--glass-border);
-      border-radius:16px; overflow:hidden;
+      border-radius:14px; overflow:hidden;
       box-shadow: var(--glass-shadow);
       cursor:pointer; text-align:left; padding:0; width:100%;
       font: inherit; color: inherit;
       transition: transform .25s cubic-bezier(.2,.7,.2,1),
                   box-shadow .25s cubic-bezier(.2,.7,.2,1),
                   background .25s ease; }
-    /* Top-edge specular highlight — subtle gloss like real glass */
-    .card::after { content:""; position:absolute; left:0; right:0; top:0; height:40%;
+    /* Hero card spans 2 columns with bigger thumb — classic Taboola layout */
+    .card.hero { grid-column: span 2; }
+    @media (max-width: 480px) { .card.hero { grid-column: span 1; } }
+
+    /* Subtle top-edge specular highlight */
+    .card::after { content:""; position:absolute; left:0; right:0; top:0; height:30%;
       pointer-events:none;
       background: linear-gradient(180deg,
         var(--glass-sheen) 0%,
-        color-mix(in oklab, var(--glass-sheen) 40%, transparent) 50%,
+        color-mix(in oklab, var(--glass-sheen) 30%, transparent) 60%,
         transparent 100%);
       mix-blend-mode: overlay;
-      opacity:.55; }
-    .card:hover { transform: translateY(-2px) scale(1.003);
+      opacity:.45; z-index:1; }
+    .card:hover { transform: translateY(-2px);
       box-shadow: var(--glass-shadow-lift);
       background: var(--glass-bg-hover); }
+    .card:hover .headline { color: color-mix(in oklab, var(--fg) 85%, var(--accent-a)); }
     .card:focus-visible { outline: 2px solid color-mix(in oklab, var(--accent-b) 80%, transparent);
       outline-offset: 3px; }
 
-    .thumb { position:relative; flex: 0 0 132px; aspect-ratio: 4 / 3;
-      background: var(--skel); overflow:hidden; align-self:stretch;
-      border-right: 1px solid var(--glass-border-soft); }
-    @media (max-width: 420px) { .thumb { flex-basis: 108px; } }
+    .thumb { position:relative; width:100%; aspect-ratio: 16 / 10;
+      background: var(--skel); overflow:hidden; }
+    .card.hero .thumb { aspect-ratio: 16 / 9; }
     .thumb img { width:100%; height:100%; object-fit:cover; display:block;
       opacity:0; transition: opacity .4s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
     .thumb img.loaded { opacity:1; }
-    .card:hover .thumb img.loaded { transform: scale(1.08); }
+    .card:hover .thumb img.loaded { transform: scale(1.06); }
     .thumb .fallback { position:absolute; inset:0; display:flex; align-items:center;
-      justify-content:center; font-size:30px; color: var(--muted);
+      justify-content:center; font-size:34px; color: var(--muted);
       background: linear-gradient(135deg,
-        color-mix(in oklab, var(--accent-a) 25%, transparent),
-        color-mix(in oklab, var(--accent-b) 25%, transparent)); }
-    /* Faint specular shimmer that sweeps across the thumb on hover */
+        color-mix(in oklab, var(--accent-a) 22%, transparent),
+        color-mix(in oklab, var(--accent-b) 22%, transparent)); }
     .thumb::after {
-      content:""; position:absolute; top:0; left:-60%; width:50%; height:100%;
+      content:""; position:absolute; top:0; left:-60%; width:45%; height:100%;
       background: linear-gradient(120deg, transparent 0%,
-        rgba(255,255,255,.45) 50%, transparent 100%);
+        rgba(255,255,255,.4) 50%, transparent 100%);
       transform: skewX(-22deg); transition: left .7s ease; pointer-events:none;
       mix-blend-mode: overlay;
     }
     .card:hover .thumb::after { left: 120%; }
 
-    .body { flex:1; min-width:0; padding:12px 14px 12px 6px;
-      display:flex; flex-direction:column; justify-content:space-between; gap:6px; }
-    .headline { margin:0; font-size:14px; font-weight:600; line-height:1.35;
-      display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-      overflow:hidden; letter-spacing:-0.005em; }
-    .summary { margin:0; font-size:12px; color: var(--muted); line-height:1.45;
-      display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-      overflow:hidden; }
-    .meta { display:flex; align-items:center; gap:7px; flex-wrap:wrap;
-      color: var(--muted); font-size:11px; }
-    .meta .src { font-weight:600;
-      background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-      max-width: 16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* "Sponsored" pill that sits on top of the thumb (Taboola signature) */
+    .sponsored-badge {
+      position:absolute; top:8px; left:8px; z-index:2;
+      padding:3px 8px; border-radius:999px;
+      background: rgba(0,0,0,0.65); color:#fff;
+      font-size:9px; font-weight:700; letter-spacing:.06em;
+      text-transform:uppercase;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+    .body { flex:1; min-width:0; padding:11px 13px 12px;
+      display:flex; flex-direction:column; gap:6px; }
+    .headline { margin:0; font-size:13.5px; font-weight:600; line-height:1.32;
+      display:-webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+      overflow:hidden; letter-spacing:-0.005em;
+      transition: color .2s ease; }
+    .card.hero .headline { font-size:16px; -webkit-line-clamp: 2; }
+    .meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+      color: var(--muted); font-size:10.5px; margin-top:auto; padding-top:4px; }
+    .meta .src {
+      font-weight:600;
+      color: color-mix(in oklab, var(--accent-a) 70%, var(--muted));
+      max-width: 18ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .meta .by { color: var(--muted); }
     .meta .dot { width:3px; height:3px; border-radius:999px; background: currentColor;
-      opacity:.6; }
-    .meta .open-ic { margin-left:auto; font-size:11px; opacity:.5; }
+      opacity:.5; }
+    .meta .open-ic { margin-left:auto; font-size:10px; opacity:.45;
+      transition: opacity .2s ease, transform .2s ease; }
     .card:hover .meta .open-ic { opacity:1; transform: translate(1px, -1px); }
 
     /* ---------- Skeletons ---------- */
-    .skeleton { display:flex; gap:12px;
+    .skeleton { display:flex; flex-direction:column;
       background: var(--glass-bg);
-      backdrop-filter: blur(20px) saturate(170%);
-      -webkit-backdrop-filter: blur(20px) saturate(170%);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
       border: 1px solid var(--glass-border);
-      border-radius:16px; overflow:hidden;
+      border-radius:14px; overflow:hidden;
       box-shadow: var(--glass-shadow); }
-    .skeleton .thumb { flex: 0 0 132px; aspect-ratio: 4 / 3;
+    .skeleton .thumb { width:100%; aspect-ratio: 16 / 10;
       background:
         linear-gradient(90deg,
           var(--skel) 0%,
           color-mix(in oklab, var(--skel) 50%, transparent) 50%,
           var(--skel) 100%);
       background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
-    @media (max-width: 420px) { .skeleton .thumb { flex-basis: 108px; } }
-    .skeleton .sk-body { flex:1; padding:14px 14px 14px 6px;
-      display:flex; flex-direction:column; gap:8px; justify-content:center; }
+    .skeleton .sk-body { padding:12px 14px 14px;
+      display:flex; flex-direction:column; gap:8px; }
     .skeleton .sk-line { height:10px; background: var(--skel); border-radius:6px; }
-    .skeleton .sk-line.short { width:55%; }
+    .skeleton .sk-line.short { width:75%; }
     .skeleton .sk-line.tiny  { width:35%; height:8px; }
     @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
 
     /* ---------- Footer / banner / empty ---------- */
-    .footer { text-align:center; padding:16px 8px 4px; color: var(--muted); font-size:11px; }
-    .footer a { color: var(--muted); text-decoration: none; border-bottom: 1px dashed var(--glass-border-soft); }
+    .footer {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap:wrap; padding:18px 6px 4px;
+      color: var(--muted); font-size:11px; }
+    .footer .recommended { display:inline-flex; align-items:center; gap:6px; }
+    .footer .recommended .by { opacity:.85; }
+    .footer .recommended .mark {
+      display:inline-flex; align-items:center; padding:3px 8px;
+      border-radius:999px; font-weight:800; letter-spacing:.03em;
+      font-size:10px; color:#fff;
+      background: linear-gradient(135deg, #1b73e8, #0a3d91);
+      box-shadow: 0 2px 6px rgba(27,115,232,.35); }
+    .footer .powered a { color: var(--muted); text-decoration: none;
+      border-bottom: 1px dashed var(--glass-border-soft); }
     .empty { text-align:center; padding:40px 16px; color: var(--muted); font-size:13px;
       background: var(--glass-bg);
       backdrop-filter: blur(18px) saturate(180%);
@@ -284,16 +332,29 @@
   <div class="wrap">
     <div class="header">
       <div class="title">
-        <h1>Top headlines</h1>
-        <p id="subtitle">Live from NewsAPI · Tap a story to open it.</p>
+        <h1>You may also like</h1>
+        <p id="subtitle">Stories from around the web · Tap a card to open the article.</p>
       </div>
       <span class="tag" id="tag">News</span>
     </div>
 
     <div class="chips" id="chips" role="tablist"></div>
-    <div class="list" id="list"></div>
+
+    <div class="strapline">
+      <div class="lhs">
+        <span class="promo">Around the web</span>
+      </div>
+      <span class="ad-choices" title="Ad choices">AdChoices</span>
+    </div>
+
+    <div class="grid" id="list"></div>
+
     <div class="footer">
-      Powered by <a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI.org</a>
+      <span class="recommended">
+        <span class="by">Recommended by</span>
+        <span class="mark">TABOOLA</span>
+      </span>
+      <span class="powered">Headlines via <a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI.org</a></span>
     </div>
     <div class="status" id="status">log: ready</div>
   </div>
@@ -350,7 +411,7 @@
   }
 
   // --- Initial skeletons (shown while waiting for the tool result) ---------
-  function showSkeletons(n = 5) {
+  function showSkeletons(n = 6) {
     listEl.innerHTML = "";
     for (let i = 0; i < n; i++) {
       const s = document.createElement("div");
@@ -366,17 +427,25 @@
     }
   }
 
+  // Deterministic "Sponsored" flag — every 4th and 7th card per tab gets the
+  // badge. Demo only; no actual paid placements here.
+  function isSponsoredSlot(i) {
+    return i === 3 || i === 6;
+  }
+
   // --- Cards ---------------------------------------------------------------
-  function renderCard(article) {
+  function renderCard(article, index = 0) {
     const card = document.createElement("button");
-    card.className = "card";
+    card.className = "card" + (index === 0 ? " hero" : "");
     card.type = "button";
 
-    const imgSrc = proxyImg(article.image);
-    const ago = timeAgo(article.published_at);
+    const heroSize = index === 0 ? { w: 720, h: 405 } : { w: 380, h: 240 };
+    const imgSrc = proxyImg(article.image, heroSize.w, heroSize.h);
+    const sponsored = isSponsoredSlot(index);
 
     card.innerHTML = `
       <div class="thumb">
+        ${sponsored ? `<span class="sponsored-badge">Sponsored</span>` : ""}
         ${imgSrc
           ? `<img alt="" loading="lazy" referrerpolicy="no-referrer" decoding="async">
              <div class="fallback" style="display:none">${FALLBACK_EMOJI}</div>`
@@ -384,18 +453,15 @@
       </div>
       <div class="body">
         <p class="headline"></p>
-        <p class="summary"></p>
         <div class="meta">
-          <span class="src"></span><span class="dot"></span>
-          <span class="ago"></span>
+          <span class="by">${sponsored ? "Promoted by" : "by"}</span>
+          <span class="src"></span>
           <span class="open-ic">↗</span>
         </div>
       </div>
     `;
     card.querySelector(".headline").textContent = article.title || "Untitled";
-    card.querySelector(".summary").textContent = article.summary || "";
     card.querySelector(".src").textContent = article.source || "Unknown";
-    card.querySelector(".ago").textContent = ago;
 
     const img = card.querySelector("img");
     if (img) {
@@ -548,7 +614,7 @@
     }
 
     listEl.innerHTML = "";
-    for (const a of articles) listEl.appendChild(renderCard(a));
+    articles.forEach((a, i) => listEl.appendChild(renderCard(a, i)));
     setStatus(`log: ${currentTab} — ${articles.length} stories`);
   }
 
