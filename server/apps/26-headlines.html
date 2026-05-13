@@ -660,7 +660,20 @@
   }
 
   const app = new App({ name: "headlines", version: "2.1.0" });
-  app.onerror = (e) => setStatus("log: error: " + (e?.message || e));
+  // Some hosts emit `notifications/tool-input` / `tool-result` with
+  // `params._meta: null`, which the SDK's Zod validator rejects and
+  // re-emits as a giant "Invalid JSON-RPC message received: [{...}]"
+  // blob. It's not our message and it's not actionable — swallow it
+  // (and any other oversized JSON-shaped error string) so the status
+  // log stays readable.
+  app.onerror = (e) => {
+    const msg = String(e?.message || e || "");
+    const looksLikeValidatorSpam =
+      msg.includes("Invalid JSON-RPC message") ||
+      (msg.length > 200 && msg.includes("invalid_union"));
+    if (looksLikeValidatorSpam) return;
+    setStatus("log: error: " + (msg.length > 160 ? msg.slice(0, 160) + "…" : msg));
+  };
 
   // Optional: if the host *does* deliver the tool result via notification,
   // honor it as a fallback (the inlined payload still wins via `rendered`).
