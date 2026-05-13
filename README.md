@@ -1,7 +1,7 @@
 # MCP Apps Demo Server
 
 A reference [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) server you
-can deploy in one click — twenty-one interactive widgets that exercise every part
+can deploy in one click — twenty-five interactive widgets that exercise every part
 of the spec. Use it to test your own MCP host, prototype your own widgets, or play
 with the protocol.
 
@@ -21,7 +21,7 @@ with the protocol.
 
 ## The widgets
 
-All twenty-one are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
+All twenty-five are spec-compliant: each tool declares `_meta.ui.resourceUri`, the
 matching resource is registered with `text/html;profile=mcp-app`, and the
 client-side JS uses the official [`@modelcontextprotocol/ext-apps`](https://www.npmjs.com/package/@modelcontextprotocol/ext-apps) SDK.
 
@@ -54,6 +54,7 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 | 23 | `show_product_carousel` | Snap-scrolling carousel with Unsplash photos + embedded checkout modal | `tools/call` (`add_to_cart`, `checkout`) + `_meta.ui.csp.resourceDomains` (Unsplash CDN) — also a CSS playground (gradient borders, shine sweep, lift-on-hover) |
 | 24 | `show_age_picker`       | iOS-style wheel + manual input with life-stage chip | `tools/call` (`submit_age`) + `ui/notifications/tool-input` (initial age) — visual demo with morphing gradient theme |
 | 25 | `show_age_gate`         | Neutral FTC-style DOB gate, jurisdiction-aware (COPPA / GDPR / LGPD / DPDP / PIPA), persistent decision | `tools/call` (`submit_age_check`) — data-minimization pattern: DOB stays client-side, only the derived decision crosses the boundary |
+| 26 | `show_taboola_news`     | Taboola-style news grid — hero card, "Sponsored" badges, "Recommended by TABOOLA" footer, live category picker (general / business / tech / science / health / sports / entertainment), liquid-glass styling | Real keyed external API (NewsAPI) proxied **server-side** via `NEWSAPI_KEY` env var + structured result **inlined into the resource HTML** at `resources/read` time (works around hosts that route widget→server tool results to chat instead of back to the iframe) + `ui/open-link` |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
@@ -65,7 +66,7 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 
 ## Spec coverage analysis
 
-> **TL;DR** — All 21 are spec-compliant, but several test the same SEP-1865
+> **TL;DR** — All 25 are spec-compliant, but several test the same SEP-1865
 > surface from a different angle. If your goal is *minimum-redundant*
 > coverage of the spec (rather than a varied gallery), the breakdown below
 > shows which widgets you can drop without losing any surface.
@@ -148,7 +149,17 @@ Pruning won't fix these — only adding new widgets will:
 3. Wait ~2 min for the first build.
 4. Add the URL to your MCP host: `https://<your-service>.onrender.com/mcp`.
 
-That's it. No env vars, no auth, no DB.
+That's it for 24 of 25 widgets — no auth, no DB. The one exception is
+**#26 `show_taboola_news`**, which hits NewsAPI server-side and needs
+its key in an env var:
+
+- Grab a free key at <https://newsapi.org/register> (no credit card,
+  100 reqs/day — enough for ~14 widget mounts).
+- In the Render dashboard for your service: **Environment → Add
+  Environment Variable** → `NEWSAPI_KEY` = `<your-key>`.
+
+The variable is declared in `render.yaml` with `sync: false` so it
+must be set in the dashboard, not committed.
 
 ## Run locally
 
@@ -160,6 +171,10 @@ uv run python server/server.py --port 8767
 ```
 
 The server speaks Streamable HTTP at `http://localhost:8767/mcp`.
+
+For `show_taboola_news`, drop `NEWSAPI_KEY=…` into a `.env` file at the
+repo root (already in `.gitignore`); the server auto-loads it on
+startup. Or export it inline: `NEWSAPI_KEY=… uv run python server/server.py`.
 
 Test against the [reference `basic-host`](https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/basic-host):
 
@@ -209,8 +224,8 @@ declares `_meta.ui.resourceUri` so spec-aware hosts know to render the widget.
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  This server (Python, FastMCP)                                   │
-│  ─ 20 ui://… resources, mime "text/html;profile=mcp-app"         │
-│  ─ 20 widget-emitting tools with _meta.ui.resourceUri            │
+│  ─ 25 ui://… resources, mime "text/html;profile=mcp-app"         │
+│  ─ 25 widget-emitting tools with _meta.ui.resourceUri            │
 │  ─ N callback tools (save_pin, make_move, save_drawing, …)       │
 └──────────────────────────────────────────────────────────────────┘
 ```
