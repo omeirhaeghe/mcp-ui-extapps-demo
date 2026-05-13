@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>eBay search — MCP App</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --fg:#0b1020; --muted:#5b6478; --bad:#e11d48;
+      --accent-a:#0064d2;  /* eBay blue */
+      --accent-b:#86b817;  /* eBay green */
+      --accent-c:#e53238;  /* eBay red */
+      --accent-d:#f5af02;  /* eBay yellow */
+      --glass-bg:           rgba(255,255,255,0.55);
+      --glass-bg-hover:     rgba(255,255,255,0.72);
+      --glass-border:       rgba(255,255,255,0.65);
+      --glass-border-soft:  rgba(15,23,42,0.08);
+      --glass-sheen:        rgba(255,255,255,0.9);
+      --glass-shadow:       0 1px 0 rgba(255,255,255,0.85) inset,
+                            0 0 0 1px rgba(255,255,255,0.45) inset,
+                            0 10px 30px -10px rgba(15,23,42,0.18),
+                            0 4px 12px -4px rgba(15,23,42,0.10);
+      --glass-shadow-lift:  0 1px 0 rgba(255,255,255,0.95) inset,
+                            0 0 0 1px rgba(255,255,255,0.55) inset,
+                            0 20px 50px -12px rgba(0,100,210,0.30),
+                            0 10px 24px -6px rgba(15,23,42,0.18);
+      --skel:                rgba(15,23,42,0.06);
+      --bg-base:             #fafbff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg:#f0f3ff; --muted:#9aa3bd; --bad:#fb7185;
+        --accent-a:#3793ff; --accent-b:#a8d65c;
+        --accent-c:#ff6b6b; --accent-d:#ffd54f;
+        --glass-bg:           rgba(20,24,38,0.55);
+        --glass-bg-hover:     rgba(28,33,52,0.70);
+        --glass-border:       rgba(255,255,255,0.10);
+        --glass-border-soft:  rgba(255,255,255,0.06);
+        --glass-sheen:        rgba(255,255,255,0.18);
+        --glass-shadow:       0 1px 0 rgba(255,255,255,0.10) inset,
+                              0 0 0 1px rgba(255,255,255,0.06) inset,
+                              0 14px 32px -10px rgba(0,0,0,0.55),
+                              0 6px 14px -4px rgba(0,0,0,0.35);
+        --glass-shadow-lift:  0 1px 0 rgba(255,255,255,0.16) inset,
+                              0 0 0 1px rgba(255,255,255,0.10) inset,
+                              0 24px 60px -14px rgba(55,147,255,0.40),
+                              0 14px 28px -8px rgba(0,0,0,0.5);
+        --skel:                rgba(255,255,255,0.06);
+        --bg-base:             #07091a;
+      }
+    }
+
+    html, body { margin:0; padding:0; min-height:100%; color: var(--fg);
+      background: var(--bg-base);
+      font: 14px -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text",
+            "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; }
+
+    /* eBay-palette mesh — red / yellow / green / blue blobs */
+    body::before {
+      content:""; position: fixed; inset:-15%; z-index:-1; pointer-events:none;
+      background:
+        radial-gradient(38% 32% at 14% 18%, color-mix(in oklab, var(--accent-c) 65%, transparent), transparent 70%),
+        radial-gradient(36% 30% at 84% 22%, color-mix(in oklab, var(--accent-d) 60%, transparent), transparent 70%),
+        radial-gradient(45% 40% at 80% 80%, color-mix(in oklab, var(--accent-a) 70%, transparent), transparent 72%),
+        radial-gradient(40% 35% at 18% 78%, color-mix(in oklab, var(--accent-b) 55%, transparent), transparent 72%);
+      filter: blur(60px) saturate(120%);
+      opacity: .50;
+      animation: drift 32s ease-in-out infinite alternate;
+    }
+    @media (prefers-color-scheme: dark) {
+      body::before { opacity: .55; filter: blur(80px) saturate(140%); }
+    }
+    @keyframes drift {
+      0%   { transform: translate3d(0, 0, 0) scale(1); }
+      50%  { transform: translate3d(-2%, 1.5%, 0) scale(1.04); }
+      100% { transform: translate3d(2%, -1%, 0) scale(1.02); }
+    }
+
+    .wrap { padding: 18px 16px 24px; max-width: 900px; margin: 0 auto; }
+
+    /* ---------- Header / search ---------- */
+    .header { display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap:wrap; margin: 0 4px 14px; }
+    .brand { display:inline-flex; align-items:baseline; gap:0;
+      font-family: "Helvetica Neue", system-ui, sans-serif;
+      font-weight: 800; font-size: 22px; letter-spacing:-0.02em; }
+    .brand .e { color: var(--accent-c); }
+    .brand .b { color: var(--accent-a); }
+    .brand .a { color: var(--accent-d); }
+    .brand .y { color: var(--accent-b); }
+    .brand .sfx { color: var(--muted); font-weight:500; font-size:13px;
+      margin-left:8px; letter-spacing:0; }
+
+    .search { position:relative; display:flex; gap:8px; align-items:center;
+      flex: 1 1 100%; max-width: 100%; margin-top: 4px; }
+    .search .field { position:relative; flex:1; min-width:0; }
+    .search .field .ic { position:absolute; left:13px; top:50%;
+      transform:translateY(-50%); color: var(--muted); font-size:14px;
+      pointer-events:none; }
+    .search input { width:100%; box-sizing:border-box;
+      padding: 11px 14px 11px 36px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      border-radius: 12px;
+      color: var(--fg); font: inherit; font-size: 14px; outline: none; }
+    .search input:focus {
+      border-color: color-mix(in oklab, var(--accent-a) 60%, transparent);
+      box-shadow:
+        var(--glass-shadow),
+        0 0 0 3px color-mix(in oklab, var(--accent-a) 25%, transparent); }
+    .search button.go {
+      padding: 11px 18px; border-radius: 999px; border:0; cursor:pointer;
+      color:#fff; font: 700 13px inherit;
+      background: linear-gradient(135deg, var(--accent-a), color-mix(in oklab, var(--accent-a) 70%, var(--accent-b)));
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.35) inset,
+        0 8px 22px -6px color-mix(in oklab, var(--accent-a) 60%, transparent);
+      transition: transform .15s ease, box-shadow .25s ease; }
+    .search button.go:hover { transform: translateY(-1px); }
+    .search button.go[disabled] { opacity:.6; cursor:wait; }
+
+    /* ---------- Result summary ---------- */
+    .summary { display:flex; align-items:center; justify-content:space-between;
+      gap:8px; flex-wrap:wrap; color: var(--muted); font-size:12px;
+      padding: 4px 4px 12px;
+      border-bottom: 1px solid var(--glass-border-soft);
+      margin: 0 -4px 12px; }
+    .summary .q { color: var(--fg); font-weight:600;
+      background: linear-gradient(135deg, var(--accent-a), var(--accent-c));
+      -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* ---------- Result grid ---------- */
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    @media (min-width: 720px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px; }
+    }
+
+    .card { position:relative; display:flex; flex-direction:column;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius:14px; overflow:hidden;
+      box-shadow: var(--glass-shadow);
+      cursor:pointer; text-align:left; padding:0; width:100%;
+      font: inherit; color: inherit;
+      transition: transform .25s cubic-bezier(.2,.7,.2,1),
+                  box-shadow .25s cubic-bezier(.2,.7,.2,1),
+                  background .25s ease; }
+    .card::after { content:""; position:absolute; left:0; right:0; top:0; height:30%;
+      pointer-events:none;
+      background: linear-gradient(180deg, var(--glass-sheen) 0%,
+        color-mix(in oklab, var(--glass-sheen) 30%, transparent) 60%, transparent 100%);
+      mix-blend-mode: overlay; opacity:.45; z-index:1; }
+    .card:hover { transform: translateY(-2px);
+      box-shadow: var(--glass-shadow-lift);
+      background: var(--glass-bg-hover); }
+    .card:focus-visible { outline: 2px solid color-mix(in oklab, var(--accent-a) 80%, transparent);
+      outline-offset: 3px; }
+
+    .thumb { position:relative; width:100%; aspect-ratio: 1 / 1;
+      background: #fff; overflow:hidden; }
+    @media (prefers-color-scheme: dark) { .thumb { background: #1a1d2c; } }
+    .thumb img { width:100%; height:100%; object-fit:contain; display:block;
+      opacity:0; padding: 6%;
+      transition: opacity .4s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+    .thumb img.loaded { opacity:1; }
+    .card:hover .thumb img.loaded { transform: scale(1.05); }
+    .thumb .fallback { position:absolute; inset:0; display:flex; align-items:center;
+      justify-content:center; font-size:32px; color: var(--muted);
+      background: linear-gradient(135deg,
+        color-mix(in oklab, var(--accent-a) 18%, transparent),
+        color-mix(in oklab, var(--accent-c) 18%, transparent)); }
+
+    .badge { position:absolute; top:8px; left:8px; z-index:2;
+      padding:3px 8px; border-radius:999px;
+      background: rgba(0,0,0,0.65); color:#fff;
+      font-size:9px; font-weight:700; letter-spacing:.06em;
+      text-transform:uppercase;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    .badge.auction { background: linear-gradient(135deg, var(--accent-d), var(--accent-c)); }
+    .badge.bin     { background: linear-gradient(135deg, var(--accent-b),
+                       color-mix(in oklab, var(--accent-b) 60%, var(--accent-a))); }
+
+    .body { flex:1; padding:11px 13px 12px;
+      display:flex; flex-direction:column; gap:6px; }
+    .price { margin:0; font-size:16px; font-weight:800; letter-spacing:-0.01em;
+      font-variant-numeric: tabular-nums;
+      color: color-mix(in oklab, var(--accent-a) 80%, var(--fg)); }
+    .title { margin:0; font-size:12.5px; font-weight:500; line-height:1.35;
+      color: var(--fg);
+      display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow:hidden; }
+    .meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+      color: var(--muted); font-size:10.5px; margin-top:auto; padding-top:4px; }
+    .meta .cond { color: var(--accent-b); font-weight:700;
+      text-transform: uppercase; letter-spacing: .04em; font-size:9.5px; }
+    .meta .cond.used { color: var(--muted); }
+    .meta .dot { width:3px; height:3px; border-radius:999px; background: currentColor;
+      opacity:.5; }
+    .meta .seller { max-width: 16ch; overflow:hidden; text-overflow:ellipsis;
+      white-space:nowrap; }
+    .meta .fb { color: color-mix(in oklab, var(--accent-b) 70%, var(--muted));
+      font-variant-numeric: tabular-nums; }
+
+    /* ---------- Skeletons ---------- */
+    .skeleton { display:flex; flex-direction:column;
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-radius:14px; overflow:hidden;
+      box-shadow: var(--glass-shadow); }
+    .skeleton .thumb { width:100%; aspect-ratio: 1 / 1;
+      background:
+        linear-gradient(90deg,
+          var(--skel) 0%,
+          color-mix(in oklab, var(--skel) 50%, transparent) 50%,
+          var(--skel) 100%);
+      background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
+    .skeleton .sk-body { padding:12px 14px 14px;
+      display:flex; flex-direction:column; gap:8px; }
+    .skeleton .sk-line { height:10px; background: var(--skel); border-radius:6px; }
+    .skeleton .sk-line.short { width:55%; }
+    .skeleton .sk-line.tiny  { width:35%; height:8px; }
+    @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+
+    /* ---------- Footer / banner / empty ---------- */
+    .footer { display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap:wrap; padding:16px 6px 4px;
+      color: var(--muted); font-size:11px; }
+    .footer a { color: var(--muted); text-decoration: none;
+      border-bottom: 1px dashed var(--glass-border-soft); }
+
+    .empty { text-align:center; padding:40px 16px; color: var(--muted); font-size:13px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      border: 1px solid var(--glass-border); border-radius: 16px;
+      box-shadow: var(--glass-shadow); }
+    .empty .ic { font-size:34px; display:block; margin-bottom:10px; }
+
+    .banner { padding:14px 16px; border-radius:14px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      margin: 4px 0 10px; font-size:13px; line-height:1.5; }
+    .banner.err { border-color: color-mix(in oklab, var(--bad) 50%, var(--glass-border));
+      color: var(--bad); }
+    .banner code { font-family: ui-monospace, monospace; font-size:12px;
+      padding:1px 6px; background: color-mix(in oklab, var(--bad) 12%, transparent);
+      border-radius:6px; color: inherit; }
+    .banner a { color: inherit; text-decoration: underline; }
+
+    .status { color: var(--muted); font-size:11px; padding: 10px 4px 0;
+      font-family: ui-monospace, "SF Mono", monospace; min-height:14px;
+      word-break: break-word; opacity:.7; }
+
+    @media (prefers-reduced-motion: reduce) {
+      body::before { animation: none; }
+      .card { transition: none; }
+      .skeleton .thumb { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <span class="brand">
+        <span class="e">e</span><span class="b">B</span><span class="a">a</span><span class="y">y</span>
+        <span class="sfx">via MCP</span>
+      </span>
+    </div>
+
+    <form class="search" id="search-form">
+      <div class="field">
+        <span class="ic">🔍</span>
+        <input id="q" type="search" placeholder="Search eBay for…" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="go" id="go" type="submit">Search</button>
+    </form>
+
+    <div class="summary" id="summary" hidden>
+      <span id="summary-text">—</span>
+      <span class="powered">Listings from eBay Browse API</span>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="footer">
+      <span>Prices and availability shown at time of fetch.</span>
+      <span>Powered by <a href="https://developer.ebay.com" target="_blank" rel="noopener">eBay Browse API</a></span>
+    </div>
+    <div class="status" id="status">log: ready</div>
+  </div>
+
+<!-- Server inlines the latest show_ebay_search result here at resource-read time -->
+<script type="application/json" id="ebay-payload">__EBAY_PAYLOAD__</script>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const PROXY = "https://wsrv.nl/?url=";
+  const FALLBACK_EMOJI = "🛒";
+
+  const gridEl    = document.getElementById("grid");
+  const statusEl  = document.getElementById("status");
+  const sumEl     = document.getElementById("summary");
+  const sumText   = document.getElementById("summary-text");
+  const qEl       = document.getElementById("q");
+  const goBtn     = document.getElementById("go");
+  const formEl    = document.getElementById("search-form");
+
+  function setStatus(t) { statusEl.textContent = t; }
+
+  function proxyImg(url, w = 360, h = 360) {
+    if (!url) return null;
+    // Most eBay thumb URLs come with a $_X.JPG sizing token. wsrv.nl will
+    // still fetch and resize without it; we just bump the dim.
+    return PROXY + encodeURIComponent(url) +
+      `&w=${w}&h=${h}&fit=cover&output=webp&q=80`;
+  }
+
+  function formatPrice(value, currency) {
+    if (!value) return "—";
+    const num = Number(value);
+    if (Number.isFinite(num)) {
+      try {
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: currency || "USD",
+          maximumFractionDigits: num >= 100 ? 0 : 2,
+        }).format(num);
+      } catch { /* fall through */ }
+    }
+    return `${currency || "$"} ${value}`;
+  }
+
+  function showSkeletons(n = 8) {
+    gridEl.innerHTML = "";
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement("div");
+      s.className = "skeleton";
+      s.innerHTML = `
+        <div class="thumb"></div>
+        <div class="sk-body">
+          <div class="sk-line"></div>
+          <div class="sk-line short"></div>
+          <div class="sk-line tiny"></div>
+        </div>`;
+      gridEl.appendChild(s);
+    }
+  }
+
+  function renderCard(item) {
+    const card = document.createElement("button");
+    card.className = "card";
+    card.type = "button";
+
+    const imgSrc = proxyImg(item.image);
+    const isAuction = (item.buying || []).includes("AUCTION");
+    const isBin     = (item.buying || []).includes("FIXED_PRICE");
+    const cond = (item.condition || "").toLowerCase();
+    const condClass = (cond.includes("new")) ? "" : "used";
+
+    card.innerHTML = `
+      <div class="thumb">
+        ${isAuction ? `<span class="badge auction">Auction</span>` :
+          isBin    ? `<span class="badge bin">Buy It Now</span>` : ""}
+        ${imgSrc
+          ? `<img alt="" loading="lazy" referrerpolicy="no-referrer" decoding="async">
+             <div class="fallback" style="display:none">${FALLBACK_EMOJI}</div>`
+          : `<div class="fallback">${FALLBACK_EMOJI}</div>`}
+      </div>
+      <div class="body">
+        <p class="price"></p>
+        <p class="title"></p>
+        <div class="meta">
+          ${item.condition ? `<span class="cond ${condClass}"></span>` : ""}
+          ${item.seller ? `<span class="dot"></span><span class="seller"></span>` : ""}
+          ${item.feedback ? `<span class="fb"></span>` : ""}
+        </div>
+      </div>
+    `;
+    card.querySelector(".price").textContent = formatPrice(item.price, item.currency);
+    card.querySelector(".title").textContent = item.title || "Untitled listing";
+    if (item.condition) card.querySelector(".cond").textContent = item.condition;
+    if (item.seller)    card.querySelector(".seller").textContent = item.seller;
+    if (item.feedback)  card.querySelector(".fb").textContent = `${item.feedback}%`;
+
+    const img = card.querySelector("img");
+    if (img) {
+      img.addEventListener("load", () => img.classList.add("loaded"));
+      img.addEventListener("error", () => {
+        img.remove();
+        const fb = card.querySelector(".fallback");
+        if (fb) fb.style.display = "flex";
+      });
+      img.src = imgSrc;
+    }
+
+    card.addEventListener("click", () => openItem(item));
+    return card;
+  }
+
+  async function openItem(item) {
+    if (!item.url) return;
+    try {
+      await app.openLink({ url: item.url });
+      setStatus(`log: openLink ok — ${item.seller || "eBay"}`);
+    } catch (e) {
+      setStatus("log: openLink error: " + (e?.message || e));
+    }
+  }
+
+  function showBannerHTML(html, isError = false) {
+    gridEl.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "banner" + (isError ? " err" : "");
+    div.innerHTML = html;
+    gridEl.appendChild(div);
+  }
+  function showEmpty(text) {
+    gridEl.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "empty";
+    div.innerHTML = `<span class="ic">🛒</span>${text}`;
+    gridEl.appendChild(div);
+  }
+
+  function applyPayload(p) {
+    if (!p || typeof p !== "object") return;
+
+    if (!p.ok) {
+      const code = p.code || "";
+      const msg = p.error || "Couldn't load eBay results.";
+      const hint = code === "no_credentials"
+        ? `<br><br>Set <code>EBAY_CLIENT_ID</code> and <code>EBAY_CLIENT_SECRET</code> on the MCP server. <a href="https://developer.ebay.com/my/keys" target="_blank" rel="noopener">Get keys</a>.`
+        : code === "no_query"
+          ? "<br><br>Try searching for something specific above."
+          : "";
+      showBannerHTML(`${msg}${hint}`, code !== "no_query");
+      setStatus(`log: ${code || "error"}: ${msg}`);
+      return;
+    }
+
+    // Reflect query + count
+    if (p.query) {
+      qEl.value = p.query;
+      sumEl.hidden = false;
+      const total = (p.total || 0).toLocaleString();
+      const n = (p.items || []).length;
+      sumText.innerHTML = `Showing <strong>${n}</strong> of ~${total} results for <span class="q">${escape(p.query)}</span>`;
+    } else {
+      sumEl.hidden = true;
+    }
+
+    const items = p.items || [];
+    if (items.length === 0) {
+      showEmpty(p.query
+        ? `No results for "${p.query}".`
+        : "Search above to pull live eBay listings.");
+      setStatus("log: empty result");
+      return;
+    }
+
+    gridEl.innerHTML = "";
+    for (const it of items) gridEl.appendChild(renderCard(it));
+    setStatus(`log: ${items.length} listings rendered`);
+  }
+
+  function escape(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;",
+    }[ch]));
+  }
+
+  function readInlined() {
+    const el = document.getElementById("ebay-payload");
+    if (!el) return null;
+    const t = (el.textContent || "").trim();
+    if (!t || t.startsWith("__")) return null;
+    try { return JSON.parse(t); } catch { return null; }
+  }
+
+  // Re-trigger show_ebay_search from the in-widget search box. The host
+  // either remounts the widget with the new payload or shows the result
+  // in chat — either way the user gets feedback.
+  async function runSearch(query) {
+    query = (query || "").trim();
+    if (!query) return;
+    goBtn.disabled = true;
+    showSkeletons(8);
+    setStatus(`log: search "${query}"…`);
+    try {
+      await app.callServerTool({
+        name: "show_ebay_search",
+        arguments: { query, limit: 24 },
+      });
+    } catch (e) {
+      setStatus("log: search dispatch error: " + (e?.message || e));
+    } finally {
+      goBtn.disabled = false;
+    }
+  }
+
+  formEl.addEventListener("submit", (e) => {
+    e.preventDefault();
+    runSearch(qEl.value);
+  });
+
+  // --- Connect --------------------------------------------------------------
+  const inlined = readInlined();
+  applyPayload(inlined || { ok: true, query: "", items: [], total: 0 });
+
+  const app = new App({ name: "ebay-search", version: "1.0.0" });
+  app.onerror = (e) => {
+    const msg = String(e?.message || e || "");
+    // Filter the same host validator spam we ran into in the headlines widget.
+    if (msg.includes("Invalid JSON-RPC message") ||
+        (msg.length > 200 && msg.includes("invalid_union"))) return;
+    setStatus("log: error: " + (msg.length > 160 ? msg.slice(0, 160) + "…" : msg));
+  };
+  app.connect();
+</script>
+</body>
+</html>

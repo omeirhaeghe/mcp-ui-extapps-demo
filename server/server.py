@@ -1228,6 +1228,211 @@ async def show_spamoola_news(
     return "Showing " + " · ".join(bits) + "."
 
 
+# ---------------------------------------------------------------------------
+# 27. eBay search — Browse API (OAuth client-credentials).
+# Same inline-payload-into-resource trick as Spamoola: show_ebay_search hits
+# eBay server-side and caches the result; the resource handler bakes that
+# cache into the widget HTML at read time. Auth uses a tiny in-process
+# OAuth token cache (eBay app tokens are valid ~2h).
+#
+# Env vars required:
+#   EBAY_CLIENT_ID + EBAY_CLIENT_SECRET   (production keyset, free signup
+#                                          at developer.ebay.com)
+#   EBAY_ENV = "production" | "sandbox"   (optional, defaults to production)
+# ---------------------------------------------------------------------------
+
+import base64 as _b64
+import time as _time
+
+_EBAY_HOSTS = {
+    "production": "https://api.ebay.com",
+    "sandbox":    "https://api.sandbox.ebay.com",
+}
+_ebay_token_cache: dict = {"token": None, "expires_at": 0.0}
+_last_ebay_payload: dict | None = None
+
+
+async def _ebay_oauth_token(client: httpx.AsyncClient) -> dict:
+    """Fetch an OAuth app-access token, caching it until ~5min before expiry."""
+    now = _time.time()
+    cached = _ebay_token_cache.get("token")
+    if cached and now < _ebay_token_cache.get("expires_at", 0):
+        return {"ok": True, "token": cached}
+
+    cid = os.environ.get("EBAY_CLIENT_ID", "").strip()
+    csec = os.environ.get("EBAY_CLIENT_SECRET", "").strip()
+    if not cid or not csec:
+        return {
+            "ok": False,
+            "code": "no_credentials",
+            "error": "EBAY_CLIENT_ID and EBAY_CLIENT_SECRET environment variables are required.",
+        }
+
+    env = os.environ.get("EBAY_ENV", "production").strip().lower()
+    host = _EBAY_HOSTS.get(env, _EBAY_HOSTS["production"])
+    basic = _b64.b64encode(f"{cid}:{csec}".encode()).decode()
+
+    try:
+        r = await client.post(
+            f"{host}/identity/v1/oauth2/token",
+            headers={
+                "Authorization": f"Basic {basic}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            content="grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope",
+            timeout=15.0,
+        )
+    except httpx.HTTPError as e:
+        return {"ok": False, "code": "network", "error": f"OAuth network error: {e}"}
+
+    if r.status_code != 200:
+        return {
+            "ok": False,
+            "code": f"oauth_http_{r.status_code}",
+            "error": f"OAuth HTTP {r.status_code}: {r.text[:200]}",
+        }
+
+    body = r.json()
+    token = body.get("access_token")
+    if not token:
+        return {"ok": False, "code": "no_token", "error": "OAuth response missing access_token."}
+
+    _ebay_token_cache["token"] = token
+    # eBay tokens last 7200s; refresh 5min before expiry.
+    _ebay_token_cache["expires_at"] = now + max(60, int(body.get("expires_in", 7200)) - 300)
+    return {"ok": True, "token": token}
+
+
+async def _search_ebay(query: str, limit: int) -> dict:
+    """One eBay Browse API call. Returns normalized payload."""
+    query = (query or "").strip()
+    if not query:
+        return {"ok": False, "code": "no_query", "error": "Please provide a search query.", "query": ""}
+
+    limit = max(1, min(int(limit or 24), 50))
+    env = os.environ.get("EBAY_ENV", "production").strip().lower()
+    host = _EBAY_HOSTS.get(env, _EBAY_HOSTS["production"])
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        tok = await _ebay_oauth_token(client)
+        if not tok.get("ok"):
+            return {**tok, "query": query}
+
+        try:
+            r = await client.get(
+                f"{host}/buy/browse/v1/item_summary/search",
+                params={"q": query, "limit": str(limit)},
+                headers={
+                    "Authorization": f"Bearer {tok['token']}",
+                    "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+                    "Accept": "application/json",
+                },
+            )
+        except httpx.HTTPError as e:
+            return {"ok": False, "code": "network", "error": f"Search network error: {e}", "query": query}
+
+    if r.status_code >= 400:
+        try:
+            body = r.json()
+            msg = (body.get("errors") or [{}])[0].get("message") or f"HTTP {r.status_code}"
+        except ValueError:
+            msg = f"HTTP {r.status_code}"
+        # 401/403 on a previously-cached token → force re-fetch on next call.
+        if r.status_code in (401, 403):
+            _ebay_token_cache["token"] = None
+            _ebay_token_cache["expires_at"] = 0
+        return {"ok": False, "code": f"http_{r.status_code}", "error": msg, "query": query}
+
+    body = r.json()
+    summaries = body.get("itemSummaries") or []
+    items: list[dict] = []
+    for s in summaries:
+        price = s.get("price") or {}
+        seller = s.get("seller") or {}
+        image = (s.get("image") or {}).get("imageUrl") or ""
+        thumbs = s.get("thumbnailImages") or []
+        if not image and thumbs:
+            image = thumbs[0].get("imageUrl") or ""
+        items.append({
+            "id": s.get("itemId") or "",
+            "title": (s.get("title") or "").strip(),
+            "url": s.get("itemWebUrl") or "",
+            "image": image,
+            "price": price.get("value") or "",
+            "currency": price.get("currency") or "USD",
+            "condition": s.get("condition") or "",
+            "seller": seller.get("username") or "",
+            "feedback": seller.get("feedbackPercentage") or "",
+            "feedback_count": seller.get("feedbackScore") or 0,
+            "buying": s.get("buyingOptions") or [],
+            "location": (s.get("itemLocation") or {}).get("country") or "",
+        })
+
+    return {
+        "ok": True,
+        "query": query,
+        "items": items,
+        "total": int(body.get("total") or 0),
+        "limit": limit,
+    }
+
+
+@mcp.resource(
+    "ui://ebay-search",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": [
+                    "https://cdn.jsdelivr.net",
+                    "https://wsrv.nl",
+                ],
+            },
+        }
+    },
+)
+def ebay_search_app() -> str:
+    """Serve the eBay search widget with the latest show_ebay_search result
+    inlined as a <script type="application/json"> tag."""
+    template = _load_app("27-ebay-search.html")
+    payload = _last_ebay_payload or {
+        "ok": True, "query": "", "items": [], "total": 0, "limit": 24
+    }
+    inlined = _json.dumps(payload).replace("</", "<\\/")
+    return template.replace("__EBAY_PAYLOAD__", inlined, 1)
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://ebay-search"}})
+async def show_ebay_search(query: str = "", limit: int = 24):
+    """Search eBay listings and render the results as an interactive widget.
+
+    Use this tool when the user asks to search eBay, find items on eBay,
+    look up an eBay listing, or otherwise wants to browse eBay inventory.
+    Examples:
+        • "search eBay for an iPhone 14"
+        • "find vintage cameras on eBay"
+        • "what's on eBay for 'lego star wars'"
+
+    Pre-fetches up to 50 listings server-side using the eBay Browse API
+    (OAuth client-credentials with EBAY_CLIENT_ID / EBAY_CLIENT_SECRET)
+    and inlines them into the widget HTML so the cards render on mount.
+    Each card opens the original eBay listing via ui/open-link.
+
+    Args:
+        query: Search keywords. Required — the widget shows an empty
+            state when blank.
+        limit: How many listings to fetch (1-50). Defaults to 24.
+    """
+    global _last_ebay_payload
+    _last_ebay_payload = await _search_ebay(query=query, limit=limit)
+    if not _last_ebay_payload.get("ok"):
+        return f"eBay search error: {_last_ebay_payload.get('error') or 'unknown'}"
+    n = len(_last_ebay_payload.get("items") or [])
+    total = _last_ebay_payload.get("total") or 0
+    return f'Found {n} of ~{total:,} eBay listings for "{query}".'
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))

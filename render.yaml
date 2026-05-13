@@ -10,7 +10,17 @@ services:
         value: "3.11"
       - key: PUBLIC_HOSTED_BASE
         value: https://omeirhaeghe.github.io/mcp-ui-extapps-demo
-      # Required by show_headlines. Get one at https://newsapi.org/register and
-      # set the value in the Render dashboard — don't commit it to the repo.
+      # Required by show_spamoola_news. Get one at https://newsapi.org/register
+      # and set it in the Render dashboard — don't commit to the repo.
       - key: NEWSAPI_KEY
         sync: false
+      # Required by show_ebay_search. Free production keyset at
+      # https://developer.ebay.com/my/keys (Application Keysets → Production).
+      # Set both in the Render dashboard — don't commit them.
+      - key: EBAY_CLIENT_ID
+        sync: false
+      - key: EBAY_CLIENT_SECRET
+        sync: false
+      # Optional: "production" (default) or "sandbox".
+      - key: EBAY_ENV
+        value: production
