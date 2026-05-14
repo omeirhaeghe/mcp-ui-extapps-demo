@@ -1253,7 +1253,21 @@ _last_ebay_payload: dict | None = None
 
 
 async def _ebay_oauth_token(client: httpx.AsyncClient) -> dict:
-    """Fetch an OAuth app-access token, caching it until ~5min before expiry."""
+    """Resolve the OAuth Bearer token for the Browse API.
+
+    Two modes, in order of precedence:
+    1. EBAY_OAUTH_TOKEN — a pre-generated Application Access Token from
+       eBay's developer portal. Used as-is; you'll need to regenerate
+       it when it expires (~2h).
+    2. EBAY_CLIENT_ID + EBAY_CLIENT_SECRET — the server runs the
+       client-credentials grant itself and caches the resulting token.
+    """
+    # Mode 1: caller supplied a token directly.
+    direct = os.environ.get("EBAY_OAUTH_TOKEN", "").strip()
+    if direct:
+        return {"ok": True, "token": direct}
+
+    # Mode 2: run the OAuth exchange ourselves with the keyset.
     now = _time.time()
     cached = _ebay_token_cache.get("token")
     if cached and now < _ebay_token_cache.get("expires_at", 0):
@@ -1265,7 +1279,10 @@ async def _ebay_oauth_token(client: httpx.AsyncClient) -> dict:
         return {
             "ok": False,
             "code": "no_credentials",
-            "error": "EBAY_CLIENT_ID and EBAY_CLIENT_SECRET environment variables are required.",
+            "error": (
+                "Set EBAY_OAUTH_TOKEN (pre-generated app access token), "
+                "or BOTH EBAY_CLIENT_ID + EBAY_CLIENT_SECRET."
+            ),
         }
 
     env = os.environ.get("EBAY_ENV", "production").strip().lower()

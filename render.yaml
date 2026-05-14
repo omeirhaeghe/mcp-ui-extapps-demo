@@ -14,9 +14,14 @@ services:
       # and set it in the Render dashboard — don't commit to the repo.
       - key: NEWSAPI_KEY
         sync: false
-      # Required by show_ebay_search. Free production keyset at
-      # https://developer.ebay.com/my/keys (Application Keysets → Production).
-      # Set both in the Render dashboard — don't commit them.
+      # Required by show_ebay_search. Two auth modes — pick one:
+      # (a) Pre-generated Application Access Token from
+      #     developer.ebay.com → User Tokens → "App access token" Generate.
+      #     Simpler but expires ~2h; you'll re-generate manually.
+      - key: EBAY_OAUTH_TOKEN
+        sync: false
+      # (b) OR the full keyset, and the server runs the client-credentials
+      #     OAuth exchange itself + caches the token (~2h with auto-refresh).
       - key: EBAY_CLIENT_ID
         sync: false
       - key: EBAY_CLIENT_SECRET
