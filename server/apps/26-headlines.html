@@ -148,7 +148,7 @@
     .chip.err { color: var(--bad); border-color: color-mix(in oklab, var(--bad) 40%, var(--glass-border)); }
     .chip.err::after { content:" ⚠"; }
 
-    /* ---------- Spamoola-style strapline ---------- */
+    /* ---------- "Around the web" strapline ---------- */
     .strapline { display:flex; align-items:center; justify-content:space-between;
       gap:10px; padding: 4px 4px 10px; margin: 0 -4px 6px;
       border-bottom: 1px solid var(--glass-border-soft); }
@@ -165,7 +165,7 @@
       background: radial-gradient(circle at 35% 35%, currentColor 0 1.5px, transparent 2px);
       opacity:.65; }
 
-    /* ---------- Article grid (Spamoola style: image on top, headline below) ---------- */
+    /* ---------- Article grid (image on top, headline below) ---------- */
     .grid {
       display:grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -187,7 +187,7 @@
       transition: transform .25s cubic-bezier(.2,.7,.2,1),
                   box-shadow .25s cubic-bezier(.2,.7,.2,1),
                   background .25s ease; }
-    /* Hero card spans 2 columns with bigger thumb — classic Spamoola layout */
+    /* Hero card spans 2 columns with bigger thumb */
     .card.hero { grid-column: span 2; }
     @media (max-width: 480px) { .card.hero { grid-column: span 1; } }
 
@@ -228,7 +228,7 @@
     }
     .card:hover .thumb::after { left: 120%; }
 
-    /* "Sponsored" pill that sits on top of the thumb (Spamoola signature) */
+    /* "Sponsored" pill that sits on top of the thumb */
     .sponsored-badge {
       position:absolute; top:8px; left:8px; z-index:2;
       padding:3px 8px; border-radius:999px;
@@ -352,7 +352,7 @@
     <div class="footer">
       <span class="recommended">
         <span class="by">Recommended by</span>
-        <span class="mark">SPAMOOLA</span>
+        <span class="mark">NEWSAPI</span>
       </span>
       <span class="powered">Headlines via <a href="https://newsapi.org" target="_blank" rel="noopener">NewsAPI.org</a></span>
     </div>

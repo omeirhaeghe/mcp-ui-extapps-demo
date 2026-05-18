@@ -54,7 +54,7 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 | 23 | `show_product_carousel` | Snap-scrolling carousel with Unsplash photos + embedded checkout modal | `tools/call` (`add_to_cart`, `checkout`) + `_meta.ui.csp.resourceDomains` (Unsplash CDN) — also a CSS playground (gradient borders, shine sweep, lift-on-hover) |
 | 24 | `show_age_picker`       | iOS-style wheel + manual input with life-stage chip | `tools/call` (`submit_age`) + `ui/notifications/tool-input` (initial age) — visual demo with morphing gradient theme |
 | 25 | `show_age_gate`         | Neutral FTC-style DOB gate, jurisdiction-aware (COPPA / GDPR / LGPD / DPDP / PIPA), persistent decision | `tools/call` (`submit_age_check`) — data-minimization pattern: DOB stays client-side, only the derived decision crosses the boundary |
-| 26 | `show_spamoola_news`     | Spamoola-style news grid — hero card, "Sponsored" badges, "Recommended by SPAMOOLA" footer, live category picker (general / business / tech / science / health / sports / entertainment), liquid-glass styling | Real keyed external API (NewsAPI) proxied **server-side** via `NEWSAPI_KEY` env var + structured result **inlined into the resource HTML** at `resources/read` time (works around hosts that route widget→server tool results to chat instead of back to the iframe) + `ui/open-link` |
+| 26 | `show_newsapi_news`     | NewsAPI-backed news grid — hero card, "Sponsored" badges, "Recommended by NEWSAPI" footer, live category picker (general / business / tech / science / health / sports / entertainment), liquid-glass styling | Real keyed external API (NewsAPI) proxied **server-side** via `NEWSAPI_KEY` env var + structured result **inlined into the resource HTML** at `resources/read` time (works around hosts that route widget→server tool results to chat instead of back to the iframe) + `ui/open-link` |
 | 27 | `show_ebay_search`      | Live eBay listing search — eBay-colored brand wordmark, in-widget search box, square thumbnails, price-forward cards with Auction / Buy-It-Now badges, condition + seller feedback %, click-to-open the listing | Real OAuth2 external API (eBay Browse) with in-process **client-credentials token cache**, `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` env vars; same inline-payload-into-HTML pattern as #26; in-widget `app.callServerTool('show_ebay_search', …)` for re-search (best-effort remount) + `ui/open-link` |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
@@ -153,7 +153,7 @@ Pruning won't fix these — only adding new widgets will:
 That's it for 24 of 26 widgets — no auth, no DB. Two widgets call out
 to keyed external APIs and need credentials in env vars:
 
-**#26 `show_spamoola_news`** (NewsAPI)
+**#26 `show_newsapi_news`** (NewsAPI)
 - Grab a free key at <https://newsapi.org/register> (no credit card,
   100 reqs/day — enough for ~14 widget mounts).
 - Render dashboard → **Environment → Add Environment Variable** →
@@ -181,7 +181,7 @@ uv run python server/server.py --port 8767
 
 The server speaks Streamable HTTP at `http://localhost:8767/mcp`.
 
-For `show_spamoola_news` and `show_ebay_search`, drop the credentials
+For `show_newsapi_news` and `show_ebay_search`, drop the credentials
 into a `.env` file at the repo root (already in `.gitignore`); the
 server auto-loads it on startup:
 

@@ -10,7 +10,7 @@ services:
         value: "3.11"
       - key: PUBLIC_HOSTED_BASE
         value: https://omeirhaeghe.github.io/mcp-ui-extapps-demo
-      # Required by show_spamoola_news. Get one at https://newsapi.org/register
+      # Required by show_newsapi_news. Get one at https://newsapi.org/register
       # and set it in the Render dashboard — don't commit to the repo.
       - key: NEWSAPI_KEY
         sync: false

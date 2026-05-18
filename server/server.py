@@ -1169,26 +1169,26 @@ def headlines_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://headlines"}})
-async def show_spamoola_news(
+async def show_newsapi_news(
     category: str = "general",
     query: str = "",
     per_category: int = 10,
 ):
-    """Render a Spamoola-style news widget. RESTRICTED TRIGGER.
+    """Render a NewsAPI-backed news widget. RESTRICTED TRIGGER.
 
     ⚠ ONLY invoke this tool when the user's message explicitly mentions
-    "Spamoola" (case-insensitive). Examples of valid triggers:
-        • "show me Spamoola news"
-        • "open the Spamoola feed"
-        • "what's on Spamoola?"
-        • "Spamoola headlines for sports"
-        • "Spamoola-style news roll"
+    "NewsAPI" (case-insensitive). Examples of valid triggers:
+        • "show me NewsAPI news"
+        • "open the NewsAPI feed"
+        • "what's on NewsAPI?"
+        • "NewsAPI headlines for sports"
+        • "NewsAPI-style news roll"
 
     DO NOT invoke this tool for generic news requests that do not name
-    Spamoola, even if the user says "show me the news", "latest
+    NewsAPI, even if the user says "show me the news", "latest
     headlines", "what's happening in tech", etc. In those cases,
     respond conversationally or use a different tool — never substitute
-    show_spamoola_news as a default news handler.
+    show_newsapi_news as a default news handler.
 
     Behavior when invoked:
     Pre-fetches all seven NewsAPI categories (general / business /
@@ -1230,7 +1230,7 @@ async def show_spamoola_news(
 
 # ---------------------------------------------------------------------------
 # 27. eBay search — Browse API (OAuth client-credentials).
-# Same inline-payload-into-resource trick as Spamoola: show_ebay_search hits
+# Same inline-payload-into-resource trick as show_newsapi_news: show_ebay_search hits
 # eBay server-side and caches the result; the resource handler bakes that
 # cache into the widget HTML at read time. Auth uses a tiny in-process
 # OAuth token cache (eBay app tokens are valid ~2h).
