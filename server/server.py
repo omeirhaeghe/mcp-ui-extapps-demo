@@ -107,18 +107,40 @@ def feedback_app() -> str:
 
 
 @mcp.tool(meta={"ui": {"resourceUri": "ui://feedback"}})
-async def show_feedback(prompt: str = "How was the response?"):
-    """Render a feedback form. Submissions invoke the `submit_feedback` tool."""
+async def show_feedback():
+    """Render a negative-feedback form ("what didn't you like about this
+    response?"). Submissions invoke the `submit_feedback` tool."""
     return "Feedback widget rendered."
 
 
 @mcp.tool()
-async def submit_feedback(rating: int, text: str = ""):
-    """Receive a feedback submission from the show_feedback widget."""
-    return (
-        f"Received feedback: {rating}/5 stars"
-        + (f' — "{text}"' if text else "")
-    )
+async def submit_feedback(
+    reasons: list[str] | None = None,
+    harmful_reasons: list[str] | None = None,
+    details: str = "",
+    send_logs: bool = False,
+):
+    """Receive a feedback submission from the show_feedback widget.
+
+    Args:
+        reasons: Selected top-level reason chips (e.g. "incorrect",
+            "incomplete", "slow_or_buggy", "too_long", "too_short", "other").
+        harmful_reasons: Selected harmful-content subcategories (e.g.
+            "hate", "violence", "sexual", "dangerous", "other_harmful").
+        details: Optional free-text comment.
+        send_logs: Whether the user opted to attach client logs.
+    """
+    reasons = reasons or []
+    harmful_reasons = harmful_reasons or []
+    parts: list[str] = []
+    if reasons:
+        parts.append("reasons: " + ", ".join(reasons))
+    if harmful_reasons:
+        parts.append("harmful: " + ", ".join(harmful_reasons))
+    if details:
+        parts.append(f'details: "{details}"')
+    parts.append("logs: " + ("attached" if send_logs else "not attached"))
+    return "Received feedback — " + " · ".join(parts) + "."
 
 
 # ---------------------------------------------------------------------------

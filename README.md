@@ -32,7 +32,7 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 |---|---|---|---|
 | 1  | `show_hello`            | Static greeting card                                | `text/html;profile=mcp-app` resource + `_meta.ui.resourceUri` on tool + `ui/initialize` handshake (bare minimum) |
 | 2  | `show_counter`          | +1 / −1 buttons, "Grow" panel                       | `ui/notifications/tool-input` (read tool args) + `ui/notifications/size-changed` (SDK auto-resize) |
-| 3  | `show_feedback`         | Star rating + comments form                         | `tools/call` host→app (`submit_feedback`) + `ui/message` (post user message into chat) |
+| 3  | `show_feedback`         | "What didn't you like?" negative-feedback card — multi-select reason chips, expandable "Harmful or inappropriate" subgroup, optional details, send-logs toggle, dismiss-X | `tools/call` host→app (`submit_feedback`) + `ui/message` (auto-posts a brief user message into chat on submit so the assistant has context) + `ui/notifications/request-teardown` (dismiss X) |
 | 4  | `show_price_chart`      | Live BTC/ETH/SOL/DOGE/ADA chart                     | `_meta.ui.csp.resourceDomains` (Chart.js CDN) + `_meta.ui.csp.connectDomains` (CoinGecko `fetch`) + `ui/open-link` |
 | 5  | `show_map`              | Click-to-drop-pin map                               | `_meta.ui.csp.resourceDomains` (Leaflet + OSM tile servers) + `tools/call` (`save_pin`) + `ui/open-link` |
 | 6  | `show_tictactoe`        | Tic-tac-toe vs server-side minimax                  | `tools/call` with `outputSchema` / `structuredContent` round-trip per move |

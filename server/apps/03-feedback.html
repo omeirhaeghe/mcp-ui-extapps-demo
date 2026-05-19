@@ -5,66 +5,143 @@
   <title>Feedback — MCP App</title>
   <style>
     :root { color-scheme: light dark;
-      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
-      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
-      --good:#16a34a; }
+      --fg:#111827; --muted:#6b7280; --bg:#ffffff; --card:#ffffff;
+      --border:#e5e7eb; --border-strong:#d1d5db;
+      --chip-bg:#ffffff; --chip-fg:#1f2937;
+      --chip-bg-on:#1f2937; --chip-fg-on:#ffffff;
+      --accent:#7c3aed; --accent-press:#6d28d9;
+      --field-bg:#ffffff; --good:#16a34a; }
     @media (prefers-color-scheme: dark) { :root {
       --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
-      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb;
-      --good:#22c55e; } }
-    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
-      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
-    .card { margin:16px; padding:18px 20px; background:var(--card);
-      border:1px solid var(--border); border-radius:10px; }
-    h1 { margin:0 0 4px; font-size:16px; }
-    .sub { margin:0 0 14px; color:var(--muted); font-size:12px; }
-    .prompt { font-size:14px; padding:10px 12px; background:var(--bg);
-      border:1px solid var(--border); border-radius:6px; margin-bottom:14px; }
-    label { display:block; font-size:12px; color:var(--muted);
-      margin: 10px 0 6px; }
-    .stars { display:flex; gap:6px; }
-    .star { width:30px; height:30px; border-radius:6px; border:1px solid var(--border);
-      background:var(--bg); cursor:pointer; font-size:16px; line-height:30px;
-      text-align:center; user-select:none; color:var(--muted); }
-    .star.on { background:#fbbf24; color:#fff; border-color:#fbbf24; }
-    textarea { width:100%; box-sizing:border-box; padding:8px 10px;
-      background:var(--bg); border:1px solid var(--border); border-radius:6px;
-      color:var(--fg); font: inherit; min-height:64px; resize:vertical; }
-    .row { display:flex; gap:8px; margin-top:14px; }
-    button { background:var(--btn); color:var(--btn-fg); border:1px solid var(--border);
-      padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer;
-      font-family: inherit; }
-    button.primary { background:var(--accent); color:#fff; border-color:transparent; }
-    button[disabled] { opacity:0.5; cursor:not-allowed; }
-    .done { display:none; padding:14px; text-align:center; color:var(--good);
-      font-size:14px; }
+      --border:#23262d; --border-strong:#2f3340;
+      --chip-bg:#1b1d23; --chip-fg:#e5e7eb;
+      --chip-bg-on:#e5e7eb; --chip-fg-on:#0b0c0f;
+      --accent:#a78bfa; --accent-press:#8b5cf6;
+      --field-bg:#0f1115; --good:#22c55e; } }
+
+    html, body { margin:0; padding:0; color:var(--fg); background:transparent;
+      font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+    .card { margin:14px; padding:20px 22px 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px -8px rgba(0,0,0,.08); }
+
+    .head { display:flex; align-items:flex-start; gap:12px; }
+    .head .title { flex:1; min-width:0; }
+    h1 { margin:0 0 4px; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+    .sub { margin:0; color: var(--muted); font-size:12.5px; line-height:1.4; }
+
+    .close { flex:0 0 auto; width:28px; height:28px; border-radius:8px;
+      background:transparent; border:1px solid transparent;
+      color: var(--muted); cursor:pointer; font: inherit; font-size:18px;
+      line-height:1; display:inline-flex; align-items:center; justify-content:center; }
+    .close:hover { background: color-mix(in oklab, var(--fg) 6%, transparent);
+      color: var(--fg); }
+
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin: 16px 0 4px; }
+    .chip { display:inline-flex; align-items:center;
+      padding: 7px 13px; border-radius:999px;
+      background: var(--chip-bg); color: var(--chip-fg);
+      border: 1px solid var(--border-strong);
+      font-size: 12.5px; cursor:pointer; user-select:none;
+      transition: background .15s ease, color .15s ease, border-color .15s ease; }
+    .chip:hover { background: color-mix(in oklab, var(--chip-fg) 6%, var(--chip-bg)); }
+    .chip.on { background: var(--chip-bg-on); color: var(--chip-fg-on);
+      border-color: var(--chip-bg-on); }
+
+    .harmful { margin-top: 14px; }
+    .harmful-toggle { display:inline-flex; align-items:center; gap:6px;
+      background:transparent; border:none; color: var(--fg);
+      padding: 4px 0; font: inherit; font-size: 13px; cursor:pointer; }
+    .harmful-toggle .chev { display:inline-block; transition: transform .2s ease;
+      color: var(--muted); font-size: 11px; }
+    .harmful.open .chev { transform: rotate(90deg); }
+    .harmful-body { display:none; margin-top: 10px; }
+    .harmful.open .harmful-body { display:block; }
+
+    .details { margin-top: 16px; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 78px;
+      padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--border-strong); background: var(--field-bg);
+      color: var(--fg); font: inherit; font-size: 13px; resize: vertical; }
+    textarea::placeholder { color: var(--muted); }
+    textarea:focus { outline: none; border-color: var(--accent); }
+
+    .row-logs { display:flex; align-items:center; gap:8px; margin-top: 14px;
+      font-size: 13px; color: var(--fg); }
+    .row-logs input[type="checkbox"] { width:16px; height:16px; cursor:pointer; }
+
+    .actions { margin-top: 16px; }
+    button.submit { background: var(--accent); color:#fff; border:none;
+      padding: 9px 22px; border-radius: 999px; font: inherit; font-size: 13px;
+      font-weight: 600; cursor: pointer; }
+    button.submit:hover { background: var(--accent-press); }
+    button.submit[disabled] { opacity:.55; cursor:not-allowed; }
+
+    .done { display:none; padding: 28px 12px; text-align:center;
+      color: var(--good); font-size: 14px; }
     .done.visible { display:block; }
-    .log { margin-top:12px; padding-top:12px; border-top:1px solid var(--border);
-      color:var(--muted); font-size:11px; font-family:ui-monospace, monospace; }
+
+    .log { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 11px; font-family: ui-monospace, monospace;
+      min-height: 14px; }
   </style>
 </head>
 <body>
   <div class="card" id="card">
-    <h1>Quick feedback</h1>
-    <p class="sub">Tests <code>callServerTool</code> + <code>sendMessage</code>.</p>
-    <div class="prompt" id="prompt">How was the response?</div>
-    <form id="form">
-      <label>Rating</label>
-      <div class="stars" id="stars">
-        <div class="star" data-v="1">★</div>
-        <div class="star" data-v="2">★</div>
-        <div class="star" data-v="3">★</div>
-        <div class="star" data-v="4">★</div>
-        <div class="star" data-v="5">★</div>
+    <div class="head">
+      <div class="title">
+        <h1>What didn't you like about this response?</h1>
+        <p class="sub">Your feedback helps improve responses for everyone</p>
       </div>
-      <label for="text">Comments (optional)</label>
-      <textarea id="text" placeholder="Anything else?"></textarea>
-      <div class="row">
-        <button type="button" id="send-prompt">Reply with template</button>
-        <button type="submit" class="primary" id="submit" disabled>Submit</button>
+      <button class="close" id="close" type="button" aria-label="Dismiss">&times;</button>
+    </div>
+
+    <form id="form">
+      <div class="chips" id="chips" role="group" aria-label="Reasons">
+        <button type="button" class="chip" data-v="incorrect">Incorrect</button>
+        <button type="button" class="chip" data-v="incomplete">Incomplete</button>
+        <button type="button" class="chip" data-v="irrelevant">Irrelevant</button>
+        <button type="button" class="chip" data-v="slow_or_buggy">Slow or buggy</button>
+        <button type="button" class="chip" data-v="too_long">Too long</button>
+        <button type="button" class="chip" data-v="too_short">Too short</button>
+        <button type="button" class="chip" data-v="other">Other</button>
+      </div>
+
+      <div class="harmful" id="harmful">
+        <button class="harmful-toggle" id="harmful-toggle" type="button"
+                aria-expanded="false">
+          <span class="chev">›</span>
+          <span>Harmful or inappropriate</span>
+        </button>
+        <div class="harmful-body">
+          <div class="chips" id="harmful-chips" role="group" aria-label="Harmful categories">
+            <button type="button" class="chip" data-v="hate">Hate speech</button>
+            <button type="button" class="chip" data-v="violence">Violence</button>
+            <button type="button" class="chip" data-v="sexual">Sexually explicit</button>
+            <button type="button" class="chip" data-v="dangerous">Dangerous advice</button>
+            <button type="button" class="chip" data-v="other_harmful">Other</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="details">
+        <textarea id="text" placeholder="Would you like to share more details? (optional)"></textarea>
+      </div>
+
+      <label class="row-logs">
+        <input type="checkbox" id="send-logs">
+        <span>Send logs with the response</span>
+      </label>
+
+      <div class="actions">
+        <button type="submit" class="submit" id="submit" disabled>Submit</button>
       </div>
     </form>
-    <div class="done" id="done">✓ Submitted — thanks for the feedback.</div>
+
+    <div class="done" id="done">✓ Thanks — your feedback was sent.</div>
     <div class="log" id="log">log: ready</div>
   </div>
 
@@ -73,46 +150,82 @@
 
   const log = document.getElementById('log');
   const submit = document.getElementById('submit');
-  const stars = document.querySelectorAll('.star');
-  let rating = 0;
+  const form = document.getElementById('form');
+  const done = document.getElementById('done');
 
-  stars.forEach(s => s.addEventListener('click', () => {
-    rating = parseInt(s.dataset.v, 10);
-    stars.forEach(x => x.classList.toggle('on', parseInt(x.dataset.v, 10) <= rating));
-    submit.disabled = rating === 0;
-    log.textContent = 'log: rating=' + rating;
-  }));
+  const selected = new Set();
+  const harmfulSelected = new Set();
+
+  function refreshSubmit() {
+    submit.disabled = selected.size === 0 && harmfulSelected.size === 0
+      && document.getElementById('text').value.trim() === '';
+  }
+
+  function wireChipGroup(container, store) {
+    container.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const v = chip.dataset.v;
+        if (store.has(v)) { store.delete(v); chip.classList.remove('on'); }
+        else { store.add(v); chip.classList.add('on'); }
+        refreshSubmit();
+      });
+    });
+  }
+  wireChipGroup(document.getElementById('chips'), selected);
+  wireChipGroup(document.getElementById('harmful-chips'), harmfulSelected);
+
+  const harmful = document.getElementById('harmful');
+  document.getElementById('harmful-toggle').addEventListener('click', () => {
+    const open = harmful.classList.toggle('open');
+    document.getElementById('harmful-toggle').setAttribute('aria-expanded', String(open));
+  });
+
+  document.getElementById('text').addEventListener('input', refreshSubmit);
 
   const app = new App({ name: "feedback-widget", version: "1.0.0" });
-  app.ontoolinput = (params) => {
-    const args = params.arguments || {};
-    if (args.prompt) document.getElementById("prompt").textContent = args.prompt;
-  };
   app.onerror = (e) => { log.textContent = 'log: error: ' + (e?.message || e); };
 
-  document.getElementById('send-prompt').addEventListener('click', async () => {
+  document.getElementById('close').addEventListener('click', async () => {
+    try { await app.requestTeardown({ reason: "user-dismissed" }); }
+    catch { /* host may not support it */ }
+  });
+
+  function summarize(reasons, harmful, details) {
+    const bits = [];
+    if (reasons.length) bits.push(reasons.join(", "));
+    if (harmful.length) bits.push("harmful: " + harmful.join(", "));
+    if (details) bits.push(`"${details}"`);
+    return bits.length ? bits.join(" · ") : "no specific reasons";
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const details = document.getElementById('text').value.trim();
+    const send_logs = document.getElementById('send-logs').checked;
+    const reasons = [...selected];
+    const harmful_reasons = [...harmfulSelected];
+    form.style.display = 'none';
+    done.classList.add('visible');
+    try {
+      await app.callServerTool({
+        name: "submit_feedback",
+        arguments: { reasons, harmful_reasons, details, send_logs },
+      });
+      log.textContent = 'log: submit_feedback ok';
+    } catch (err) {
+      log.textContent = 'log: submit_feedback error: ' + (err?.message || err);
+      return;
+    }
     try {
       await app.sendMessage({
         role: "user",
-        content: [{ type: "text", text: "Can you summarize the key points so far?" }],
+        content: [{
+          type: "text",
+          text: "I just sent feedback on the last response — "
+                + summarize(reasons, harmful_reasons, details) + ".",
+        }],
       });
-      log.textContent = 'log: sendMessage ok';
-    } catch (e) {
-      log.textContent = 'log: sendMessage error: ' + (e?.message || e);
-    }
-  });
-
-  document.getElementById('form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const text = document.getElementById('text').value;
-    document.getElementById('form').style.display = 'none';
-    document.getElementById('done').classList.add('visible');
-    try {
-      await app.callServerTool({ name: "submit_feedback", arguments: { rating, text } });
-      log.textContent = 'log: submit_feedback ok';
-    } catch (e) {
-      log.textContent = 'log: submit_feedback error: ' + (e?.message || e);
-    }
+    } catch { /* host may not support ui/message */ }
   });
 
   app.connect();
