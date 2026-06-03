@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>YouTube Player — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
+      --good:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .wrap { margin:14px; background:var(--card); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden; }
+    .urlbar { display:flex; gap:6px; align-items:center; padding:8px 10px;
+      border-bottom:1px solid var(--border); }
+    .urlbar input { flex:1; padding:6px 10px; background:var(--bg);
+      border:1px solid var(--border); border-radius:5px; color:var(--fg);
+      font: 12px ui-monospace, monospace; }
+    .urlbar button { background:var(--btn); color:var(--btn-fg);
+      border:1px solid var(--border); border-radius:5px; padding:5px 10px;
+      font-size:12px; cursor:pointer; font-family:inherit; }
+    .urlbar button.primary { background:var(--accent); color:#fff; border-color:transparent; }
+    .badge { font-size:10px; padding:2px 8px; border-radius:999px;
+      background:var(--btn); color:var(--btn-fg);
+      font-family: ui-monospace, monospace; }
+    .badge.ok   { background:#10b98122; color:var(--good); }
+    .badge.warn { background:#f59e0b22; color:var(--warn); }
+    .badge.bad  { background:#ef444422; color:var(--bad); }
+
+    .stage { position:relative; aspect-ratio:16/9; background:#000; }
+    iframe.player { position:absolute; inset:0; width:100%; height:100%; border:0; display:block; }
+    .overlay { position:absolute; inset:0; padding:20px;
+      display:none; flex-direction:column; gap:10px; align-items:center;
+      justify-content:center; text-align:center; background:var(--card);
+      color:var(--muted); }
+    .overlay.visible { display:flex; }
+    .overlay h2 { margin:0; font-size:14px; color:var(--fg); }
+    .overlay p { margin:0; font-size:12px; max-width:360px; }
+    .overlay code { font-family: ui-monospace, monospace; font-size:11px;
+      background:var(--btn); color:var(--btn-fg); padding:1px 6px; border-radius:4px; }
+
+    .footer { padding:10px 12px; border-top:1px solid var(--border);
+      display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+      font-size:11px; color:var(--muted); }
+    .pill { padding:2px 8px; border-radius:999px;
+      background:var(--btn); color:var(--btn-fg);
+      font-family: ui-monospace, monospace; font-size:10px;
+      cursor:pointer; user-select:none; }
+    .pill:hover { filter: brightness(1.05); }
+    .log { margin-left:auto; font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="urlbar">
+      <span class="badge" id="badge">…</span>
+      <input id="url" type="text" spellcheck="false" autocomplete="off"
+        placeholder="YouTube URL or video ID">
+      <button id="play" class="primary">Play ▶</button>
+      <button id="open">Open ↗</button>
+    </div>
+
+    <div class="stage">
+      <iframe class="player" id="player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen loading="eager"></iframe>
+      <div class="overlay" id="overlay">
+        <h2 id="ov-title">No video</h2>
+        <p id="ov-body">Paste a YouTube link or 11-character video ID, then press
+          <strong>Play ▶</strong>.</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Try:</span>
+      <span class="pill" data-id="aqz-KE-bpKQ">Big Buck Bunny</span>
+      <span class="pill" data-id="dQw4w9WgXcQ">Rick Astley</span>
+      <span class="pill" data-id="jNQXAC9IVRw">Me at the zoo</span>
+      <span class="log" id="log">log: ready</span>
+    </div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+
+  const urlInput = document.getElementById('url');
+  const player   = document.getElementById('player');
+  const overlay  = document.getElementById('overlay');
+  const ovTitle  = document.getElementById('ov-title');
+  const ovBody   = document.getElementById('ov-body');
+  const badge    = document.getElementById('badge');
+  const playBtn  = document.getElementById('play');
+  const openBtn  = document.getElementById('open');
+  const log      = document.getElementById('log');
+  const pills    = document.querySelectorAll('.pill[data-id]');
+
+  function setBadge(state, text) { badge.className = 'badge ' + state; badge.textContent = text; }
+  function showOverlay(t, b) { ovTitle.textContent = t; if (b) ovBody.textContent = b; overlay.classList.add('visible'); }
+  function hideOverlay() { overlay.classList.remove('visible'); }
+
+  // Accept a bare 11-char ID, a youtu.be link, or any youtube.com/watch?v= /
+  // /embed/ / /shorts/ form, and return the canonical video ID (or null).
+  function parseId(raw) {
+    if (!raw) return null;
+    const s = raw.trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+    let u;
+    try { u = new URL(s); } catch { return null; }
+    const host = u.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1).split('/')[0];
+      return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+    }
+    if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+      const v = u.searchParams.get('v');
+      if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
+      const m = u.pathname.match(/\/(?:embed|shorts|v)\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  let currentId = null;
+
+  function load(raw) {
+    const id = parseId(raw);
+    if (!id) {
+      currentId = null;
+      player.src = 'about:blank';
+      setBadge('bad', 'no id');
+      showOverlay("Couldn't read a video ID",
+        "Expected a YouTube link or an 11-character ID like dQw4w9WgXcQ.");
+      log.textContent = 'log: unparseable — ' + (raw || '(empty)');
+      return;
+    }
+    currentId = id;
+    hideOverlay();
+    setBadge('warn', 'loading…');
+    // youtube-nocookie keeps the privacy-enhanced embed; rel=0 limits related
+    // videos to the same channel. No autoplay — hosts often block it.
+    player.src = `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`;
+    log.textContent = 'log: embedding ' + id;
+  }
+
+  player.addEventListener('load', () => {
+    if (currentId) { setBadge('ok', 'embedded'); log.textContent = 'log: ready — ' + currentId; }
+  });
+
+  playBtn.addEventListener('click', () => load(urlInput.value));
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') load(urlInput.value); });
+  pills.forEach(p => p.addEventListener('click', () => { urlInput.value = p.dataset.id; load(p.dataset.id); }));
+
+  const app = new App({ name: "youtube-player-widget", version: "1.0.0" });
+
+  openBtn.addEventListener('click', async () => {
+    if (!currentId) return;
+    try { await app.openLink({ url: `https://www.youtube.com/watch?v=${currentId}` }); }
+    catch (err) { log.textContent = 'openLink error: ' + (err?.message || err); }
+  });
+
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    const raw = (args.video || args.url || args.id || "").trim();
+    if (raw) { urlInput.value = raw; load(raw); }
+  };
+
+  app.connect().then(() => {
+    if (!currentId) {
+      urlInput.value = "aqz-KE-bpKQ";
+      load(urlInput.value);
+    }
+  });
+</script>
+</body>
+</html>

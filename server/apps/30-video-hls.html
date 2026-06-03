@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HLS Streaming — MCP App</title>
+  <style>
+    :root { color-scheme: light dark;
+      --fg:#1a1a1a; --muted:#6b7280; --bg:#fff; --card:#f7f7f8;
+      --border:#e5e7eb; --accent:#2563eb; --btn:#e5e7eb; --btn-fg:#111;
+      --good:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+    @media (prefers-color-scheme: dark) { :root {
+      --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0c0f; --card:#16181d;
+      --border:#23262d; --accent:#7aa2ff; --btn:#23262d; --btn-fg:#e5e7eb; } }
+    html,body { margin:0; padding:0; color:var(--fg); background:var(--bg);
+      font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .wrap { margin:14px; background:var(--card); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden; }
+    .urlbar { display:flex; gap:6px; align-items:center; padding:8px 10px;
+      border-bottom:1px solid var(--border); }
+    .urlbar input { flex:1; padding:6px 10px; background:var(--bg);
+      border:1px solid var(--border); border-radius:5px; color:var(--fg);
+      font: 12px ui-monospace, monospace; }
+    .urlbar button, .urlbar select { background:var(--btn); color:var(--btn-fg);
+      border:1px solid var(--border); border-radius:5px; padding:5px 10px;
+      font-size:12px; cursor:pointer; font-family:inherit; }
+    .urlbar button.primary { background:var(--accent); color:#fff; border-color:transparent; }
+    .badge { font-size:10px; padding:2px 8px; border-radius:999px;
+      background:var(--btn); color:var(--btn-fg);
+      font-family: ui-monospace, monospace; }
+    .badge.ok   { background:#10b98122; color:var(--good); }
+    .badge.warn { background:#f59e0b22; color:var(--warn); }
+    .badge.bad  { background:#ef444222; color:var(--bad); }
+
+    .stage { position:relative; aspect-ratio:16/9; background:#000; }
+    video { position:absolute; inset:0; width:100%; height:100%; display:block; background:#000; }
+    .overlay { position:absolute; inset:0; padding:20px;
+      display:none; flex-direction:column; gap:10px; align-items:center;
+      justify-content:center; text-align:center; background:var(--card);
+      color:var(--muted); }
+    .overlay.visible { display:flex; }
+    .overlay h2 { margin:0; font-size:14px; color:var(--fg); }
+    .overlay p { margin:0; font-size:12px; max-width:380px; }
+    .overlay code { font-family: ui-monospace, monospace; font-size:11px;
+      background:var(--btn); color:var(--btn-fg); padding:1px 6px; border-radius:4px; }
+
+    .footer { padding:10px 12px; border-top:1px solid var(--border);
+      display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+      font-size:11px; color:var(--muted); }
+    .pill { padding:2px 8px; border-radius:999px;
+      background:var(--btn); color:var(--btn-fg);
+      font-family: ui-monospace, monospace; font-size:10px;
+      cursor:pointer; user-select:none; }
+    .pill:hover { filter: brightness(1.05); }
+    .log { margin-left:auto; font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="urlbar">
+      <span class="badge" id="badge">…</span>
+      <input id="url" type="text" spellcheck="false" autocomplete="off"
+        placeholder="https://…/master.m3u8">
+      <select id="quality" title="Quality" disabled><option>Auto</option></select>
+      <button id="play" class="primary">Load ▶</button>
+    </div>
+
+    <div class="stage">
+      <video id="video" controls playsinline preload="metadata"></video>
+      <div class="overlay" id="overlay">
+        <h2 id="ov-title">No stream</h2>
+        <p id="ov-body">Paste an HLS playlist URL (<code>.m3u8</code>) and press
+          <strong>Load ▶</strong>. Adaptive bitrate via
+          <code>hls.js</code>, with native fallback on Safari.</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Try:</span>
+      <span class="pill" data-url="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">Mux test (multi-bitrate)</span>
+      <span class="pill" data-url="https://test-streams.mux.dev/pts_shift/master.m3u8">Mux pts-shift</span>
+      <span class="log" id="log">log: ready</span>
+    </div>
+  </div>
+
+<script type="module">
+  import { App } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@1.7.1/dist/src/app-with-deps.js";
+  import Hls from "https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.mjs";
+
+  const urlInput = document.getElementById('url');
+  const video    = document.getElementById('video');
+  const quality  = document.getElementById('quality');
+  const overlay  = document.getElementById('overlay');
+  const ovTitle  = document.getElementById('ov-title');
+  const ovBody   = document.getElementById('ov-body');
+  const badge    = document.getElementById('badge');
+  const playBtn  = document.getElementById('play');
+  const log      = document.getElementById('log');
+  const pills    = document.querySelectorAll('.pill[data-url]');
+
+  function setBadge(state, text) { badge.className = 'badge ' + state; badge.textContent = text; }
+  function showOverlay(t, b) { ovTitle.textContent = t; if (b) ovBody.textContent = b; overlay.classList.add('visible'); }
+  function hideOverlay() { overlay.classList.remove('visible'); }
+
+  let hls = null;
+  let currentUrl = "";
+
+  function resetQuality() {
+    quality.innerHTML = '<option value="-1">Auto</option>';
+    quality.disabled = true;
+  }
+
+  function teardown() {
+    if (hls) { try { hls.destroy(); } catch {} hls = null; }
+    video.removeAttribute('src'); video.load();
+    resetQuality();
+  }
+
+  function load(raw) {
+    const url = (raw || "").trim();
+    teardown();
+    if (!url) { currentUrl = ""; setBadge('bad', 'no url'); showOverlay("No stream", null); return; }
+    try { new URL(url); } catch {
+      setBadge('bad', 'bad url'); showOverlay("That's not a valid URL", null);
+      log.textContent = 'log: invalid — ' + url; return;
+    }
+    currentUrl = url;
+    hideOverlay();
+    setBadge('warn', 'loading…');
+    log.textContent = 'log: loading ' + url;
+
+    // Safari (and iOS) play HLS natively — no hls.js needed.
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = url;
+      video.addEventListener('loadedmetadata', () => setBadge('ok', 'native HLS'), { once: true });
+      return;
+    }
+    if (!Hls.isSupported()) {
+      setBadge('bad', 'unsupported');
+      showOverlay("HLS isn't supported here", "This browser can neither play HLS natively nor run hls.js.");
+      return;
+    }
+
+    hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+    hls.attachMedia(video);
+    hls.loadSource(url);
+
+    hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
+      setBadge('ok', 'ready');
+      const levels = data.levels || [];
+      resetQuality();
+      levels.forEach((lvl, i) => {
+        const h = lvl.height ? lvl.height + 'p' : Math.round((lvl.bitrate || 0) / 1000) + 'k';
+        const opt = document.createElement('option');
+        opt.value = String(i); opt.textContent = h;
+        quality.appendChild(opt);
+      });
+      quality.disabled = levels.length < 2;
+      log.textContent = 'log: ' + levels.length + ' quality level(s)';
+    });
+
+    hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
+      if (Number(quality.value) === -1) {
+        const lvl = hls.levels[data.level];
+        if (lvl) log.textContent = 'log: auto → ' + (lvl.height ? lvl.height + 'p' : data.level);
+      }
+    });
+
+    hls.on(Hls.Events.ERROR, (_e, data) => {
+      if (!data.fatal) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) { setBadge('warn', 'network…'); hls.startLoad(); }
+      else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) { setBadge('warn', 'recovering…'); hls.recoverMediaError(); }
+      else {
+        setBadge('bad', 'fatal');
+        showOverlay("Stream error",
+          "The playlist or its segments failed to load (CORS / connect-src CSP, or a dead stream).");
+        log.textContent = 'log: fatal ' + data.details;
+        teardown();
+      }
+    });
+  }
+
+  quality.addEventListener('change', () => {
+    if (hls) hls.currentLevel = Number(quality.value); // -1 = auto
+  });
+
+  playBtn.addEventListener('click', () => load(urlInput.value));
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') load(urlInput.value); });
+  pills.forEach(p => p.addEventListener('click', () => { urlInput.value = p.dataset.url; load(p.dataset.url); }));
+
+  video.addEventListener('playing', () => setBadge('ok', 'playing'));
+  video.addEventListener('ended',   () => setBadge('ok', 'ended'));
+
+  const app = new App({ name: "hls-video-widget", version: "1.0.0" });
+
+  app.ontoolinput = (params) => {
+    const args = params.arguments || {};
+    const url = (args.src || args.url || "").trim();
+    if (url) { urlInput.value = url; load(url); }
+  };
+
+  app.connect().then(() => {
+    if (!currentUrl) {
+      urlInput.value = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+      load(urlInput.value);
+    }
+  });
+</script>
+</body>
+</html>

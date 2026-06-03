@@ -56,6 +56,9 @@ spec section / method ID so you can grep [the spec](https://modelcontextprotocol
 | 25 | `show_age_gate`         | Neutral FTC-style DOB gate, jurisdiction-aware (COPPA / GDPR / LGPD / DPDP / PIPA), persistent decision | `tools/call` (`submit_age_check`) — data-minimization pattern: DOB stays client-side, only the derived decision crosses the boundary |
 | 26 | `show_newsapi_news`     | NewsAPI-backed news grid — hero card, "Sponsored" badges, "Recommended by NEWSAPI" footer, live category picker (general / business / tech / science / health / sports / entertainment), liquid-glass styling | Real keyed external API (NewsAPI) proxied **server-side** via `NEWSAPI_KEY` env var + structured result **inlined into the resource HTML** at `resources/read` time (works around hosts that route widget→server tool results to chat instead of back to the iframe) + `ui/open-link` |
 | 27 | `show_ebay_search`      | Live eBay listing search — eBay-colored brand wordmark, in-widget search box, square thumbnails, price-forward cards with Auction / Buy-It-Now badges, condition + seller feedback %, click-to-open the listing | Real OAuth2 external API (eBay Browse) with in-process **client-credentials token cache**, `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` env vars; same inline-payload-into-HTML pattern as #26; in-widget `app.callServerTool('show_ebay_search', …)` for re-search (best-effort remount) + `ui/open-link` |
+| 28 | `show_youtube`          | YouTube player — privacy-enhanced nested iframe, accepts a URL or bare 11-char ID, preset pills, click-to-open on youtube.com | `_meta.ui.csp.frameDomains` (CSP `frame-src`) scoped to `youtube-nocookie.com` + `ui/open-link` — video bytes stream straight from Google to the iframe; the server only ships the player + allowlist |
+| 29 | `show_video`            | Native HTML5 `<video controls>` for a direct file URL (`.mp4` / `.webm` / `.ogg`), HTTPS-only with load/CORS error overlay | `_meta.ui.csp.connectDomains` for the media origin (host derives `media-src`) — no iframe; the host's own media pipeline fetches the file |
+| 30 | `show_hls`              | Adaptive HLS streaming via `hls.js` (CDN) with a quality-level picker; native HLS fallback on Safari/iOS; auto network/media-error recovery | `hls.js` from `resourceDomains` + playlist/segment origin in `connectDomains` (XHR `connect-src`) — adaptive bitrate over `.m3u8` |
 
 Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 `make_move`, `save_drawing`, `add_todo`, `toggle_todo`, `delete_todo`,
@@ -67,7 +70,7 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 
 ## Spec coverage analysis
 
-> **TL;DR** — All 26 are spec-compliant, but several test the same SEP-1865
+> **TL;DR** — All are spec-compliant, but several test the same SEP-1865
 > surface from a different angle. If your goal is *minimum-redundant*
 > coverage of the spec (rather than a varied gallery), the breakdown below
 > shows which widgets you can drop without losing any surface.
@@ -90,7 +93,8 @@ Plus the callback tools the widgets invoke: `submit_feedback`, `save_pin`,
 | `ui/download-file` with embedded blob | #17 `show_signature` |
 | `ui/notifications/request-teardown` + `ui/resource-teardown` | #18 `show_one_shot` |
 | `_meta.ui.visibility: ["app"]` (model-hidden tool) | #19 `show_internal_counter` |
-| `_meta.ui.csp.frameDomains` (CSP `frame-src` for nested iframes) | #20 `show_url` |
+| `_meta.ui.csp.frameDomains` (CSP `frame-src` for nested iframes) | #20 `show_url`, #28 `show_youtube` (video-specialized) |
+| `<video>` media playback (`media-src`) + HLS adaptive streaming over XHR | #29 `show_video` (native file), #30 `show_hls` (`hls.js`) |
 | `ui/update-model-context` (view→host context push) | #21 `show_user_profile` |
 
 #### Surfaces tested by multiple widgets

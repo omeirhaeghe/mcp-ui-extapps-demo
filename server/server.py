@@ -1472,6 +1472,126 @@ async def show_ebay_search(query: str = "", limit: int = 24):
     return f'Found {n} of ~{total:,} eBay listings for "{query}".'
 
 
+# ---------------------------------------------------------------------------
+# 28. YouTube player — privacy-enhanced nested iframe (youtube-nocookie).
+#     Like #20 show_url but purpose-built for video: accepts a URL or bare
+#     11-char ID and frames the /embed/ player. The video bytes stream
+#     directly from Google to the iframe; the MCP server only ships the
+#     player HTML + the frameDomains allowlist.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://video-youtube",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": ["https://cdn.jsdelivr.net"],
+                "frameDomains": ["https://www.youtube-nocookie.com"],
+            },
+        }
+    },
+)
+def video_youtube_app() -> str:
+    return _load_app("28-video-youtube.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://video-youtube"}})
+async def show_youtube(video: str = "aqz-KE-bpKQ"):
+    """Render a YouTube player widget.
+
+    Accepts any YouTube link (`youtu.be/…`, `youtube.com/watch?v=…`,
+    `/embed/…`, `/shorts/…`) or a bare 11-character video ID. The widget
+    frames the privacy-enhanced `youtube-nocookie.com/embed/<id>` player —
+    only that origin is in `_meta.ui.csp.frameDomains`.
+
+    Args:
+        video: YouTube URL or 11-character video ID.
+    """
+    return f"YouTube player rendered for {video!r}."
+
+
+# ---------------------------------------------------------------------------
+# 29. Native HTML5 <video> — direct-file playback via <video controls>.
+#     No iframe: the host's media pipeline fetches the file directly, so the
+#     source origin must be reachable under the host's media-src CSP. We list
+#     the demo CDN in connectDomains (the documented external-origin knob);
+#     hosts that derive media-src from it will allow the stream.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://video-html5",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": ["https://cdn.jsdelivr.net"],
+                "connectDomains": ["https://commondatastorage.googleapis.com"],
+            },
+        }
+    },
+)
+def video_html5_app() -> str:
+    return _load_app("29-video-html5.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://video-html5"}})
+async def show_video(url: str = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"):
+    """Render a native HTML5 `<video>` player for a direct file URL.
+
+    Plays an `.mp4` / `.webm` / `.ogg` served over HTTPS with native
+    controls. The source origin must be reachable under the host's media-src
+    CSP; the demo CDN (`commondatastorage.googleapis.com`) is allowlisted via
+    `_meta.ui.csp.connectDomains`.
+
+    Args:
+        url: Direct HTTPS URL to a video file.
+    """
+    return f"HTML5 video player rendered for {url}."
+
+
+# ---------------------------------------------------------------------------
+# 30. HLS streaming — adaptive bitrate via hls.js (CDN), native HLS fallback
+#     on Safari. hls.js fetches the .m3u8 playlist and .ts/.m4s segments over
+#     XHR/fetch, so the stream origin goes in connectDomains; the library
+#     itself is a resourceDomains (cdn.jsdelivr.net) script.
+# ---------------------------------------------------------------------------
+
+@mcp.resource(
+    "ui://video-hls",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "prefersBorder": True,
+            "csp": {
+                "resourceDomains": ["https://cdn.jsdelivr.net"],
+                "connectDomains": ["https://test-streams.mux.dev"],
+            },
+        }
+    },
+)
+def video_hls_app() -> str:
+    return _load_app("30-video-hls.html")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": "ui://video-hls"}})
+async def show_hls(src: str = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"):
+    """Render an adaptive HLS streaming player.
+
+    Plays an HLS playlist (`.m3u8`) with `hls.js` for adaptive bitrate and a
+    quality picker, falling back to native HLS on Safari/iOS. The playlist
+    and its segments are fetched over XHR, so the stream origin
+    (`test-streams.mux.dev` for the demo) is allowlisted via
+    `_meta.ui.csp.connectDomains`.
+
+    Args:
+        src: HLS playlist URL ending in `.m3u8`.
+    """
+    return f"HLS streaming player rendered for {src}."
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCP Apps demo server")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8767)))
