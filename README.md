@@ -14,6 +14,7 @@ with the protocol.
 > for the spec.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/omeirhaeghe/mcp-ui-extapps-demo)
+[![SafeSkill 93/100](https://img.shields.io/badge/SafeSkill-93%2F100_Verified%20Safe-brightgreen)](https://safeskill.dev/scan/omeirhaeghe-mcp-ui-extapps-demo)
 
 **Live demo:** `https://mcp-ui-extapps-demo.onrender.com/mcp` (Render free tier — cold-starts after idle).
 
